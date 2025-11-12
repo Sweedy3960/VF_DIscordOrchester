@@ -1,12 +1,21 @@
 {
-  "keywords": [
+  "switches": [
     {
-      "label": "antoine",
-      "keywordIndex": 0,
-      "userId": "123456789012345678",
-      "channelId": "234567890123456789",
-      "moveOnMatch": true
+      "switchId": 0,
+      "userId": "USER_1_DISCORD_ID",
+      "targetUserId": "USER_2_DISCORD_ID"
+    },
+    {
+      "switchId": 1,
+      "userId": "USER_2_DISCORD_ID",
+      "targetUserId": "USER_3_DISCORD_ID"
+    },
+    {
+      "switchId": 2,
+      "userId": "USER_3_DISCORD_ID",
+      "targetUserId": "USER_1_DISCORD_ID"
     }
   ],
-  "defaultChannelId": null
+  "officeChannelId": "OFFICE_VOICE_CHANNEL_ID",
+  "directChannelId": "DIRECT_VOICE_CHANNEL_ID"
 }

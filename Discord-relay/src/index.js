@@ -27,8 +27,8 @@ const {
   MQTT_PASSWORD,
   MQTT_TOPIC,
   MAPPING_FILE = './mappings.json',
-  KEYWORD_WHITELIST,
-  MOVE_COOLDOWN_MS = '5000'
+  MOVE_COOLDOWN_MS = '5000',
+  ALL_SWITCHES_HOLD_TIME_MS = '5000'
 } = process.env;
 
 const mappingPath = path.resolve(process.cwd(), MAPPING_FILE);
@@ -36,31 +36,26 @@ let mapping;
 try {
   mapping = JSON.parse(fs.readFileSync(mappingPath, 'utf-8'));
 } catch (err) {
-  logger.error({ err, mappingPath }, 'Unable to load keyword mapping');
+  logger.error({ err, mappingPath }, 'Unable to load switch mapping');
   process.exit(1);
 }
 
-const keywordMap = new Map();
-if (Array.isArray(mapping.keywords)) {
-  for (const entry of mapping.keywords) {
-    if (!entry) continue;
-    const key = (entry.label || '').toLowerCase();
-    if (!key) continue;
-    keywordMap.set(key, entry);
-    if (typeof entry.keywordIndex === 'number') {
-      keywordMap.set(`#${entry.keywordIndex}`, entry);
-    }
+// Build switch map from configuration
+const switchMap = new Map();
+if (Array.isArray(mapping.switches)) {
+  for (const entry of mapping.switches) {
+    if (!entry || typeof entry.switchId !== 'number') continue;
+    switchMap.set(entry.switchId, entry);
   }
 }
 
-const whitelist = (KEYWORD_WHITELIST || '')
-  .split(',')
-  .map((k) => k.trim().toLowerCase())
-  .filter(Boolean);
-const whitelistSet = whitelist.length ? new Set(whitelist) : null;
-
 const cooldownMs = Number.parseInt(MOVE_COOLDOWN_MS, 10) || 0;
+const allSwitchesHoldTimeMs = Number.parseInt(ALL_SWITCHES_HOLD_TIME_MS, 10) || 5000;
 const lastMoveByUser = new Map();
+
+// Track switch states: Map<switchId, { pressed: boolean, timestamp: number }>
+const switchStates = new Map();
+let allSwitchesPressedTimer = null;
 
 const client = mqtt.connect(MQTT_URL, {
   username: MQTT_USERNAME || undefined,
@@ -92,65 +87,156 @@ client.on('message', async (topic, payload) => {
     return;
   }
 
-  const keywordLabel = typeof evt.keyword === 'string' ? evt.keyword : '';
-  const keywordIndex = Number.isInteger(evt.keyword_index) ? evt.keyword_index : null;
-
-  if (!keywordLabel && keywordIndex === null) {
-    logger.debug({ evt }, 'Ignoring event without keyword');
+  // Validate switch event structure
+  if (typeof evt.switchId !== 'number' || typeof evt.state !== 'number') {
+    logger.debug({ evt }, 'Ignoring event without valid switchId or state');
     return;
   }
 
-  const lookupKeys = [];
-  if (keywordLabel) lookupKeys.push(keywordLabel.toLowerCase());
-  if (keywordIndex !== null) lookupKeys.push(`#${keywordIndex}`);
+  const { switchId, state, timestamp } = evt;
+  const pressed = state === 1;
 
-  let mappingEntry = null;
-  for (const key of lookupKeys) {
-    if (!key) continue;
-    mappingEntry = keywordMap.get(key);
-    if (mappingEntry) break;
+  logger.debug({ switchId, state, pressed, timestamp }, 'Received switch event');
+
+  // Update switch state
+  switchStates.set(switchId, { pressed, timestamp: timestamp || Date.now() });
+
+  // Check if all switches are pressed
+  const allPressed = areAllSwitchesPressed();
+
+  if (allPressed && !allSwitchesPressedTimer) {
+    // All switches just became pressed - start timer
+    logger.info('All 3 switches pressed, starting timer');
+    const pressTime = Date.now();
+    
+    allSwitchesPressedTimer = setTimeout(async () => {
+      // Still all pressed after hold time - trigger reset
+      if (areAllSwitchesPressed()) {
+        logger.info('All switches held for 5+ seconds - resetting to default');
+        await handleResetToDefault();
+      }
+      allSwitchesPressedTimer = null;
+    }, allSwitchesHoldTimeMs);
+
+    return; // Don't process individual switch while waiting
   }
 
-  if (!mappingEntry) {
-    logger.info({ keywordLabel, keywordIndex }, 'No mapping for keyword');
+  if (!allPressed && allSwitchesPressedTimer) {
+    // Switches released before timeout - move everyone back to office
+    clearTimeout(allSwitchesPressedTimer);
+    allSwitchesPressedTimer = null;
+    
+    logger.info('All switches released before 5 seconds - returning to office');
+    await handleReturnToOffice();
     return;
   }
 
-  if (whitelistSet && keywordLabel) {
-    const normalized = keywordLabel.toLowerCase();
-    if (!whitelistSet.has(normalized)) {
-      logger.debug({ keywordLabel }, 'Keyword filtered by whitelist');
-      return;
+  // Handle single switch press (only if not all switches are pressed)
+  if (!allPressed && pressed) {
+    await handleSingleSwitchPress(switchId);
+  }
+});
+
+function areAllSwitchesPressed() {
+  // Check if switches 0, 1, and 2 are all pressed
+  for (let i = 0; i < 3; i++) {
+    const state = switchStates.get(i);
+    if (!state || !state.pressed) {
+      return false;
     }
   }
+  return true;
+}
 
-  if (!mappingEntry.userId) {
-    logger.warn({ mappingEntry }, 'Mapping missing userId');
+async function handleSingleSwitchPress(switchId) {
+  const switchConfig = switchMap.get(switchId);
+  
+  if (!switchConfig) {
+    logger.info({ switchId }, 'No mapping for switch');
     return;
   }
 
-  const channelId = mappingEntry.channelId || mapping.defaultChannelId;
-  if (!channelId) {
-    logger.warn({ mappingEntry }, 'No channelId resolved for move');
+  if (!switchConfig.userId || !switchConfig.targetUserId) {
+    logger.warn({ switchConfig }, 'Switch mapping missing userId or targetUserId');
+    return;
+  }
+
+  if (!mapping.directChannelId) {
+    logger.warn('No directChannelId configured');
     return;
   }
 
   const now = Date.now();
-  const lastMove = lastMoveByUser.get(mappingEntry.userId) || 0;
+  const lastMove = lastMoveByUser.get(switchConfig.userId) || 0;
   if (cooldownMs > 0 && now - lastMove < cooldownMs) {
-    logger.debug({ userId: mappingEntry.userId }, 'Move skipped due to cooldown');
+    logger.debug({ userId: switchConfig.userId }, 'Move skipped due to cooldown');
     return;
   }
 
   try {
-    await moveMember({ userId: mappingEntry.userId, channelId, keywordLabel, score: evt.score });
-    lastMoveByUser.set(mappingEntry.userId, now);
-  } catch (err) {
-    logger.error({ err, userId: mappingEntry.userId }, 'Failed to move member');
-  }
-});
+    // Move both the switch owner and their target to the direct channel
+    logger.info({ 
+      switchId, 
+      userId: switchConfig.userId, 
+      targetUserId: switchConfig.targetUserId,
+      channelId: mapping.directChannelId 
+    }, 'Moving users to direct channel');
 
-async function moveMember({ userId, channelId, keywordLabel, score }) {
+    await moveMember({ 
+      userId: switchConfig.userId, 
+      channelId: mapping.directChannelId 
+    });
+    
+    await moveMember({ 
+      userId: switchConfig.targetUserId, 
+      channelId: mapping.directChannelId 
+    });
+
+    lastMoveByUser.set(switchConfig.userId, now);
+  } catch (err) {
+    logger.error({ err, switchId, userId: switchConfig.userId }, 'Failed to move members');
+  }
+}
+
+async function handleReturnToOffice() {
+  if (!mapping.officeChannelId) {
+    logger.warn('No officeChannelId configured');
+    return;
+  }
+
+  try {
+    // Move all configured users back to office channel
+    const userIds = new Set();
+    for (const [, switchConfig] of switchMap) {
+      if (switchConfig.userId) userIds.add(switchConfig.userId);
+      if (switchConfig.targetUserId) userIds.add(switchConfig.targetUserId);
+    }
+
+    logger.info({ 
+      userIds: Array.from(userIds), 
+      channelId: mapping.officeChannelId 
+    }, 'Moving all users back to office channel');
+
+    for (const userId of userIds) {
+      await moveMember({ userId, channelId: mapping.officeChannelId });
+    }
+  } catch (err) {
+    logger.error({ err }, 'Failed to move users back to office');
+  }
+}
+
+async function handleResetToDefault() {
+  // Reset is the same as returning to office, but we also clear state
+  await handleReturnToOffice();
+  
+  // Clear all switch states
+  switchStates.clear();
+  lastMoveByUser.clear();
+  
+  logger.info('System reset complete');
+}
+
+async function moveMember({ userId, channelId }) {
   const endpoint = `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${userId}`;
   const body = JSON.stringify({ channel_id: channelId });
 
@@ -165,7 +251,7 @@ async function moveMember({ userId, channelId, keywordLabel, score }) {
   });
 
   if (response.status === 200 || response.status === 204) {
-    logger.info({ userId, channelId, keywordLabel, score }, 'Member moved successfully');
+    logger.info({ userId, channelId }, 'Member moved successfully');
     return;
   }
 
