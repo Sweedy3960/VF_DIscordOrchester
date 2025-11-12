@@ -1,0 +1,12 @@
+{
+  "keywords": [
+    {
+      "label": "antoine",
+      "keywordIndex": 0,
+      "userId": "123456789012345678",
+      "channelId": "234567890123456789",
+      "moveOnMatch": true
+    }
+  ],
+  "defaultChannelId": null
+}
