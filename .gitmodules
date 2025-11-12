@@ -1,0 +1,6 @@
+[submodule "Discord-relay"]
+	path = Discord-relay
+	url = https://github.com/Sweedy3960/Discord-relay
+[submodule "MqttBotCommander"]
+	path = MqttBotCommander
+	url = https://github.com/Sweedy3960/MqttBotCommander
