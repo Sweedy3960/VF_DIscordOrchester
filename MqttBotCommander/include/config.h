@@ -7,9 +7,9 @@
 
 // HTTP Server Configuration
 // Replace with your Discord-relay server address
-#define HTTP_SERVER "192.168.1.100"
+#define HTTP_SERVER "stamya.org"
 #define HTTP_PORT 3000
-#define HTTP_ENDPOINT "http://" HTTP_SERVER ":" STR(HTTP_PORT) "/switch/event"
+#define HTTP_ENDPOINT "https://" HTTP_SERVER ":" STR(HTTP_PORT) "/switch/event"
 
 // Helper macro for stringification
 #define STR_HELPER(x) #x

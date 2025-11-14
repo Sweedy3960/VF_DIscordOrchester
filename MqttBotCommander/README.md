@@ -38,7 +38,7 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 #define WIFI_PASSWORD "votre_password"
 
 // HTTP Server
-#define HTTP_SERVER "192.168.1.100"  // Adresse IP de votre serveur Discord-relay
+#define HTTP_SERVER "stamya.org"  // Adresse de votre serveur Discord-relay
 #define HTTP_PORT 3000
 
 // GPIO Pins (modifier si nécessaire)
@@ -109,7 +109,7 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 
 Le firmware envoie des requêtes HTTP POST vers :
 ```
-http://<HTTP_SERVER>:<HTTP_PORT>/switch/event
+https://<HTTP_SERVER>:<HTTP_PORT>/switch/event
 ```
 
 Format du payload JSON :

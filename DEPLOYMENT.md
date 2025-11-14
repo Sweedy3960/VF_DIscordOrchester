@@ -371,7 +371,7 @@ Testez les switches pour vérifier que tout fonctionne :
    #define WIFI_PASSWORD "votre_password"
    
    // HTTP Server Configuration
-   #define HTTP_SERVER "192.168.1.100"  // Adresse IP de votre serveur Discord-relay
+   #define HTTP_SERVER "stamya.org"  // Adresse de votre serveur Discord-relay
    #define HTTP_PORT 3000
    
    // GPIO Pins (adaptez si nécessaire)
@@ -569,7 +569,7 @@ Vérifiez que :
 2. **Testez l'accessibilité du serveur** :
    ```bash
    ping <HTTP_SERVER>
-   curl http://<HTTP_SERVER>:3000/health
+   curl https://<HTTP_SERVER>:3000/health
    ```
 
 3. **Vérifiez le port** : Par défaut 3000
@@ -603,7 +603,7 @@ Vérifiez que :
 
 2. **Testez l'endpoint depuis l'ESP32** :
    ```bash
-   curl -X POST http://<HTTP_SERVER>:3000/switch/event \
+   curl -X POST https://<HTTP_SERVER>:3000/switch/event \
      -H "Content-Type: application/json" \
      -d '{"switchId":0,"state":1,"timestamp":12345}'
    ```
