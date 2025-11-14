@@ -78,10 +78,7 @@ Ce guide décrit les procédures complètes pour :
    BOT_TOKEN=your_discord_bot_token
    GUILD_ID=your_discord_guild_id
    
-   MQTT_URL=mqtts://your-broker:8883
-   MQTT_TOPIC=enterprise/your_enterprise_id/device/your_device_id/switch/event
-   MQTT_USERNAME=your_mqtt_username
-   MQTT_PASSWORD=your_mqtt_password
+   HTTP_PORT=3000
    
    MOVE_COOLDOWN_MS=5000
    ALL_SWITCHES_HOLD_TIME_MS=5000
@@ -247,7 +244,7 @@ Si pas d'erreurs, testez manuellement :
 npm start
 ```
 
-Vérifiez que le service démarre correctement et se connecte à MQTT et Discord.
+Vérifiez que le service démarre correctement et écoute sur le port HTTP.
 Arrêtez avec `Ctrl+C`.
 
 #### Étape 8 : Redémarrage du service
@@ -291,21 +288,22 @@ Testez les switches pour vérifier que tout fonctionne :
    npm start
    ```
 
-#### Erreurs de connexion MQTT
+#### Erreurs de port HTTP
 
-1. Vérifiez l'URL et les credentials :
+1. Vérifiez la configuration du port :
    ```bash
-   cat .env | grep MQTT
+   cat .env | grep HTTP_PORT
    ```
 
-2. Testez la connectivité au broker :
+2. Testez que le port est accessible :
    ```bash
-   telnet your-broker-address 8883
-   # ou
-   nc -zv your-broker-address 8883
+   curl http://localhost:3000/health
    ```
 
-3. Vérifiez les logs du broker MQTT
+3. Vérifiez qu'aucun autre service n'utilise le port :
+   ```bash
+   sudo netstat -tulpn | grep :3000
+   ```
 
 #### Erreurs Discord API
 
@@ -372,15 +370,9 @@ Testez les switches pour vérifier que tout fonctionne :
    #define WIFI_SSID "votre_ssid"
    #define WIFI_PASSWORD "votre_password"
    
-   // MQTT Configuration
-   #define MQTT_SERVER "votre-broker.com"
-   #define MQTT_PORT 8883
-   #define MQTT_USERNAME "votre_username"
-   #define MQTT_PASSWORD "votre_password"
-   
-   // MQTT Topics
-   #define ENTERPRISE_ID "votre_enterprise_id"
-   #define DEVICE_ID "votre_device_id"
+   // HTTP Server Configuration
+   #define HTTP_SERVER "192.168.1.100"  // Adresse IP de votre serveur Discord-relay
+   #define HTTP_PORT 3000
    
    // GPIO Pins (adaptez si nécessaire)
    #define SWITCH_0_PIN 25
@@ -422,8 +414,9 @@ Testez les switches pour vérifier que tout fonctionne :
    
    Vous devriez voir :
    - Connexion WiFi
-   - Connexion MQTT
+   - Configuration de l'endpoint HTTP
    - Événements de switches
+   - Codes de réponse HTTP
 
 #### Méthode 2 : Avec Arduino IDE
 
@@ -446,7 +439,6 @@ Testez les switches pour vérifier que tout fonctionne :
    
    - Croquis → Inclure une bibliothèque → Gérer les bibliothèques
    - Installez :
-     - `PubSubClient` par Nick O'Leary
      - `ArduinoJson` par Benoit Blanchon
 
 4. **Ouverture du projet**
@@ -525,7 +517,7 @@ pio device monitor
 
 Vérifiez que :
 - L'ESP32 se connecte au WiFi
-- L'ESP32 se connecte au MQTT
+- L'ESP32 peut envoyer des requêtes HTTP au serveur
 - Les switches fonctionnent correctement
 
 ### Dépannage ESP32
@@ -570,15 +562,22 @@ Vérifiez que :
    pio device monitor
    ```
 
-#### L'ESP32 ne se connecte pas à MQTT
+#### L'ESP32 n'envoie pas de requêtes HTTP
 
-1. **Testez le broker** depuis un autre client
+1. **Vérifiez l'adresse HTTP_SERVER** dans `config.h`
 
-2. **Vérifiez les credentials** dans `config.h`
+2. **Testez l'accessibilité du serveur** :
+   ```bash
+   ping <HTTP_SERVER>
+   curl http://<HTTP_SERVER>:3000/health
+   ```
 
-3. **Vérifiez le port** : 1883 (non-sécurisé) ou 8883 (TLS)
+3. **Vérifiez le port** : Par défaut 3000
 
-4. **Vérifiez les logs MQTT** sur le broker
+4. **Vérifiez les logs** sur le serveur Discord-relay :
+   ```bash
+   sudo journalctl -u discord-relay -f
+   ```
 
 #### Les switches ne fonctionnent pas
 
@@ -596,19 +595,24 @@ Vérifiez que :
    ```
    Vous devriez voir les événements PRESSED/RELEASED
 
-#### Les messages MQTT ne sont pas reçus
+#### Les événements ne sont pas reçus par Discord-relay
 
-1. **Vérifiez le topic MQTT** :
-   - Dans l'ESP32 `config.h`
-   - Dans le Discord-relay `.env`
-   - Ils doivent correspondre !
+1. **Vérifiez l'adresse HTTP** :
+   - Dans l'ESP32 `config.h` : HTTP_SERVER doit pointer vers le VPS
+   - Vérifiez que le port est correct (par défaut 3000)
 
-2. **Utilisez un client MQTT pour tester** :
+2. **Testez l'endpoint depuis l'ESP32** :
    ```bash
-   mosquitto_sub -h broker.example.com -t "enterprise/+/device/+/switch/event" -v
+   curl -X POST http://<HTTP_SERVER>:3000/switch/event \
+     -H "Content-Type: application/json" \
+     -d '{"switchId":0,"state":1,"timestamp":12345}'
    ```
 
-3. **Vérifiez les ACL** sur le broker MQTT
+3. **Vérifiez le firewall** :
+   ```bash
+   sudo ufw status
+   sudo ufw allow 3000/tcp
+   ```
 
 ---
 
@@ -619,7 +623,7 @@ Vérifiez que :
 - [ ] VPS configuré avec Node.js et Git
 - [ ] Repository cloné sur le VPS
 - [ ] Discord bot créé avec permissions appropriées
-- [ ] Broker MQTT configuré et accessible
+- [ ] Port HTTP 3000 accessible depuis l'ESP32
 - [ ] ESP32 et composants matériels prêts
 
 ### Discord-relay
@@ -632,12 +636,12 @@ Vérifiez que :
 
 ### ESP32 Firmware
 
-- [ ] `config.h` configuré avec WiFi et MQTT
+- [ ] `config.h` configuré avec WiFi et HTTP_SERVER
 - [ ] Switches câblés correctement
 - [ ] Firmware compilé sans erreurs
 - [ ] Firmware téléversé sur l'ESP32
 - [ ] ESP32 connecté au WiFi
-- [ ] ESP32 connecté au MQTT
+- [ ] ESP32 peut envoyer des requêtes HTTP au serveur
 - [ ] Switches testés et fonctionnels
 
 ### Tests Fonctionnels

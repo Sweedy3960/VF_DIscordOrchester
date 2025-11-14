@@ -1,12 +1,11 @@
 # Discord Relay Bridge
 
-Ce service relie les événements de switches physiques publiés par l'ESP32 sur MQTT à Discord,
+Ce service relie les événements de switches physiques envoyés par l'ESP32 via HTTP à Discord,
 afin de déplacer automatiquement des utilisateurs entre les salons vocaux.
 
 ## Fonctionnement
-- Souscrit au topic MQTT `enterprise/<enterprise_id>/device/<device_id>/switch/event`
-  (ou un motif défini par `MQTT_TOPIC`).
-- Chaque message JSON doit contenir `switchId` (0, 1 ou 2), `state` (1=appuyé, 0=relâché) 
+- Écoute les requêtes HTTP POST sur l'endpoint `/switch/event`
+- Chaque requête JSON doit contenir `switchId` (0, 1 ou 2), `state` (1=appuyé, 0=relâché) 
   et optionnellement `timestamp`.
 - Gère trois modes d'action selon les switches appuyés :
   - **Switch unique** : Déplace l'utilisateur du switch et sa cible vers le salon "Direct"
@@ -17,9 +16,9 @@ afin de déplacer automatiquement des utilisateurs entre les salons vocaux.
 
 ## Prérequis
 - Node.js ≥ 18
-- Accès à un broker MQTT déjà configuré (aucune modification requise côté ESP32).
 - Bot Discord configuré avec les permissions `Move Members` et l'intent
   `GUILD_VOICE_STATES`.
+- Port HTTP accessible depuis l'ESP32 (par défaut : 3000)
 
 ## Installation
 
@@ -32,7 +31,7 @@ Copy-Item .env.example .env
 Éditez ensuite `.env` et `mappings.json` :
 
 - `.env` : renseignez les identifiants Discord (`APP_ID`, `BOT_TOKEN`, `GUILD_ID`),
-  les paramètres MQTT (`MQTT_URL`, `MQTT_USERNAME`, `MQTT_PASSWORD` le cas échéant),
+  le port HTTP (`HTTP_PORT`, par défaut 3000),
   et les temps de cooldown (`MOVE_COOLDOWN_MS`, `ALL_SWITCHES_HOLD_TIME_MS`).
 - `mappings.json` : liste des correspondances switch → utilisateur → cible.
 
@@ -89,7 +88,7 @@ Pour faire tourner le bridge en permanence sur un VPS avec démarrage automatiqu
 ./configure.sh
 ```
 
-Le script vous guide à travers la configuration du bot Discord, MQTT, et des mappings utilisateurs/channels.
+Le script vous guide à travers la configuration du bot Discord et des mappings utilisateurs/channels.
 
 **Déploiement :** Consultez le guide détaillé [DEPLOYMENT.md](./DEPLOYMENT.md) pour :
 - Installation sur VPS (Ubuntu/Debian)
@@ -104,7 +103,8 @@ Le script vous guide à travers la configuration du bot Discord, MQTT, et des ma
 - Le service respecte un cooldown configurable (`MOVE_COOLDOWN_MS`) pour limiter
   les mouvements répétés et éviter les rate limits.
 
-## Intégration avec l'existant
-Ce pont n'altère aucunement l'ESP32 ni le broker MQTT déjà en production :
-il consomme simplement les événements existants et orchestre les actions côté
-Discord.
+## Architecture HTTP
+Ce service fonctionne comme un serveur HTTP simple qui :
+- Reçoit les événements de switches de l'ESP32 via HTTP POST
+- Orchestre les actions Discord en réponse
+- Fournit un endpoint `/health` pour vérifier l'état du service
