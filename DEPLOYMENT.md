@@ -372,7 +372,7 @@ Testez les switches pour vérifier que tout fonctionne :
    
    // HTTP Server Configuration
    #define HTTP_SERVER "stamya.org"  // Adresse de votre serveur Discord-relay
-   #define HTTP_PORT 3000
+   #define HTTP_BASE_PATH "/vf"  // Chemin de base pour l'API
    
    // GPIO Pins (adaptez si nécessaire)
    #define SWITCH_0_PIN 25
@@ -569,10 +569,11 @@ Vérifiez que :
 2. **Testez l'accessibilité du serveur** :
    ```bash
    ping <HTTP_SERVER>
-   curl https://<HTTP_SERVER>:3000/health
+   curl https://<HTTP_SERVER><HTTP_BASE_PATH>/health
    ```
+   Exemple: `curl https://stamya.org/vf/health`
 
-3. **Vérifiez le port** : Par défaut 3000
+3. **Vérifiez le chemin de base** : Par défaut `/vf`
 
 4. **Vérifiez les logs** sur le serveur Discord-relay :
    ```bash
@@ -599,14 +600,15 @@ Vérifiez que :
 
 1. **Vérifiez l'adresse HTTP** :
    - Dans l'ESP32 `config.h` : HTTP_SERVER doit pointer vers le VPS
-   - Vérifiez que le port est correct (par défaut 3000)
+   - Vérifiez que le chemin de base est correct (par défaut `/vf`)
 
-2. **Testez l'endpoint depuis l'ESP32** :
+2. **Testez l'endpoint** :
    ```bash
-   curl -X POST https://<HTTP_SERVER>:3000/switch/event \
+   curl -X POST https://<HTTP_SERVER><HTTP_BASE_PATH>/switch/event \
      -H "Content-Type: application/json" \
      -d '{"switchId":0,"state":1,"timestamp":12345}'
    ```
+   Exemple: `curl -X POST https://stamya.org/vf/switch/event -H "Content-Type: application/json" -d '{"switchId":0,"state":1,"timestamp":12345}'`
 
 3. **Vérifiez le firewall** :
    ```bash

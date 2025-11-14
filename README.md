@@ -13,9 +13,9 @@ Ce projet combine deux composants principaux :
 
 ```
 ┌─────────────┐                       ┌──────────────┐
-│   ESP32     │         HTTP          │ Discord-     │
+│   ESP32     │       HTTPS           │ Discord-     │
 │   + 3       │  ──────────────────►  │ relay (VPS)  │
-│  Switches   │     Switch Events     │ Port 3000    │
+│  Switches   │   /vf/switch/event    │ stamya.org   │
 └─────────────┘                       └──────┬───────┘
                                              │
                                              │ Discord API

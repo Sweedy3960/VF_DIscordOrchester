@@ -6,10 +6,10 @@
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
 
 // HTTP Server Configuration
-// Replace with your Discord-relay server address
+// Replace with your Discord-relay server address and path
 #define HTTP_SERVER "stamya.org"
-#define HTTP_PORT 3000
-#define HTTP_ENDPOINT "https://" HTTP_SERVER ":" STR(HTTP_PORT) "/switch/event"
+#define HTTP_BASE_PATH "/vf"
+#define HTTP_ENDPOINT "https://" HTTP_SERVER HTTP_BASE_PATH "/switch/event"
 
 // Helper macro for stringification
 #define STR_HELPER(x) #x

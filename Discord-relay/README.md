@@ -108,3 +108,5 @@ Ce service fonctionne comme un serveur HTTP simple qui :
 - Reçoit les événements de switches de l'ESP32 via HTTP POST
 - Orchestre les actions Discord en réponse
 - Fournit un endpoint `/health` pour vérifier l'état du service
+
+**Note de déploiement**: Si déployé derrière un reverse proxy (nginx, Apache), configurez le proxy pour rediriger un chemin spécifique (ex: `/vf`) vers ce service. L'ESP32 doit être configuré avec le chemin complet (ex: `https://stamya.org/vf/switch/event`).

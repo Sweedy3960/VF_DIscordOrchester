@@ -39,7 +39,7 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 
 // HTTP Server
 #define HTTP_SERVER "stamya.org"  // Adresse de votre serveur Discord-relay
-#define HTTP_PORT 3000
+#define HTTP_BASE_PATH "/vf"  // Chemin de base pour l'API
 
 // GPIO Pins (modifier si nécessaire)
 #define SWITCH_0_PIN 25
@@ -109,8 +109,9 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 
 Le firmware envoie des requêtes HTTP POST vers :
 ```
-https://<HTTP_SERVER>:<HTTP_PORT>/switch/event
+https://<HTTP_SERVER><HTTP_BASE_PATH>/switch/event
 ```
+Exemple: `https://stamya.org/vf/switch/event`
 
 Format du payload JSON :
 ```json
