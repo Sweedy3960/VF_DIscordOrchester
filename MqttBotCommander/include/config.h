@@ -5,18 +5,15 @@
 #define WIFI_SSID "YOUR_WIFI_SSID"
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
 
-// MQTT Configuration
-#define MQTT_SERVER "broker.example.com"
-#define MQTT_PORT 8883
-#define MQTT_USERNAME "your_mqtt_username"
-#define MQTT_PASSWORD "your_mqtt_password"
-#define MQTT_CLIENT_ID "esp32-switch-controller"
+// HTTP Server Configuration
+// Replace with your Discord-relay server address
+#define HTTP_SERVER "192.168.1.100"
+#define HTTP_PORT 3000
+#define HTTP_ENDPOINT "http://" HTTP_SERVER ":" STR(HTTP_PORT) "/switch/event"
 
-// MQTT Topics
-#define ENTERPRISE_ID "your_enterprise_id"
-#define DEVICE_ID "your_device_id"
-// Topic format: enterprise/<enterprise_id>/device/<device_id>/switch/event
-#define MQTT_TOPIC_PREFIX "enterprise/" ENTERPRISE_ID "/device/" DEVICE_ID "/switch/event"
+// Helper macro for stringification
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
 
 // GPIO Pin Configuration for Switches
 #define SWITCH_0_PIN 25
@@ -28,8 +25,5 @@
 
 // WiFi reconnection delay (milliseconds)
 #define WIFI_RECONNECT_DELAY 5000
-
-// MQTT reconnection delay (milliseconds)
-#define MQTT_RECONNECT_DELAY 5000
 
 #endif // CONFIG_H

@@ -1,7 +1,7 @@
 {
   "name": "discord-relay",
-  "version": "0.1.0",
-  "description": "MQTT to Discord bridge for KWS events",
+  "version": "0.2.0",
+  "description": "HTTP to Discord bridge for switch events",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "dotenv": "16.4.5",
-    "mqtt": "5.3.5",
     "pino": "9.3.1",
     "undici": "6.19.8"
   }
