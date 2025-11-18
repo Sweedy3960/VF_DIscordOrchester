@@ -23,6 +23,7 @@ const {
   BOT_TOKEN,
   GUILD_ID,
   HTTP_PORT = '3000',
+  HTTP_BASE_PATH = '/vf',
   MAPPING_FILE = './mappings.json',
   MOVE_COOLDOWN_MS = '5000',
   ALL_SWITCHES_HOLD_TIME_MS = '5000'
@@ -67,7 +68,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === 'POST' && req.url === '/switch/event') {
+  const switchEventPath = `${HTTP_BASE_PATH}/switch/event`;
+  const healthPath = `${HTTP_BASE_PATH}/health`;
+
+  if (req.method === 'POST' && req.url === switchEventPath) {
     let body = '';
     
     req.on('data', (chunk) => {
@@ -148,18 +152,18 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Internal server error' }));
     });
-  } else if (req.method === 'GET' && req.url === '/health') {
+  } else if (req.method === 'GET' && req.url === healthPath) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', timestamp: Date.now() }));
   } else {
     res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Not found' }));
+    res.end(JSON.stringify({ error: 'Not found', url: req.url }));
   }
 });
 
 const port = Number.parseInt(HTTP_PORT, 10) || 3000;
 server.listen(port, () => {
-  logger.info({ port }, 'HTTP server listening for switch events');
+  logger.info({ port, basePath: HTTP_BASE_PATH }, 'HTTP server listening for switch events');
 });
 
 function areAllSwitchesPressed() {
