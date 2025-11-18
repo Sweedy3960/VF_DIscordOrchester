@@ -9,7 +9,13 @@
     "check": "node --check src/index.js",
     "test:scripts": "./test-scripts.sh",
     "configure": "./configure.sh",
-    "quickstart": "./quickstart.sh"
+    "quickstart": "./quickstart.sh",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop discord-relay",
+    "pm2:restart": "pm2 restart discord-relay",
+    "pm2:delete": "pm2 delete discord-relay",
+    "pm2:logs": "pm2 logs discord-relay",
+    "pm2:monit": "pm2 monit"
   },
   "dependencies": {
     "dotenv": "16.4.5",

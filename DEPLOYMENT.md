@@ -165,6 +165,100 @@ Ce guide décrit les procédures complètes pour :
     sudo journalctl -u discord-relay -f
     ```
 
+### Alternative : Configuration avec PM2
+
+PM2 est un gestionnaire de processus populaire pour Node.js qui offre une gestion simplifiée et des fonctionnalités avancées.
+
+#### Installation de PM2
+
+```bash
+# Installation globale de PM2
+sudo npm install -g pm2
+
+# Vérification de l'installation
+pm2 --version
+```
+
+#### Configuration et démarrage
+
+1. **Créer le répertoire pour les logs**
+   ```bash
+   cd /opt/VF_DIscordOrchester/Discord-relay
+   mkdir -p logs
+   ```
+
+2. **Démarrer l'application avec PM2**
+   ```bash
+   npm run pm2:start
+   # ou directement
+   pm2 start ecosystem.config.cjs
+   ```
+
+3. **Configurer PM2 pour démarrer au boot**
+   ```bash
+   pm2 startup
+   # Suivez les instructions affichées (copier-coller la commande sudo)
+   
+   # Sauvegarder la liste des applications
+   pm2 save
+   ```
+
+#### Commandes PM2 utiles
+
+```bash
+# Voir le statut
+pm2 status
+pm2 list
+
+# Voir les logs en temps réel
+npm run pm2:logs
+# ou
+pm2 logs discord-relay
+
+# Voir les logs avec filtrage
+pm2 logs discord-relay --lines 100
+pm2 logs discord-relay --err  # Erreurs uniquement
+
+# Redémarrer l'application
+npm run pm2:restart
+# ou
+pm2 restart discord-relay
+
+# Arrêter l'application
+npm run pm2:stop
+# ou
+pm2 stop discord-relay
+
+# Monitoring en temps réel
+npm run pm2:monit
+# ou
+pm2 monit
+
+# Supprimer de PM2
+npm run pm2:delete
+# ou
+pm2 delete discord-relay
+```
+
+#### Mise à jour avec PM2
+
+Pour mettre à jour l'application gérée par PM2 :
+
+```bash
+# 1. Aller dans le répertoire
+cd /opt/VF_DIscordOrchester
+
+# 2. Récupérer les mises à jour
+git pull origin main
+
+# 3. Installer les dépendances
+cd Discord-relay
+npm install
+
+# 4. Redémarrer avec PM2
+npm run pm2:restart
+```
+
 ### Procédure de Mise à Jour
 
 Voici la procédure complète pour mettre à jour le Discord-relay sur votre VPS :

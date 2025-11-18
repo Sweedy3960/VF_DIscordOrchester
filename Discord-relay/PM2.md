@@ -1,0 +1,211 @@
+# Guide PM2 pour Discord-relay
+
+Ce guide explique comment utiliser PM2 pour gérer le service Discord-relay en production.
+
+## Pourquoi PM2 ?
+
+PM2 offre plusieurs avantages :
+- ✅ Redémarrage automatique en cas de crash
+- ✅ Gestion des logs simplifiée
+- ✅ Monitoring en temps réel
+- ✅ Démarrage automatique au boot du serveur
+- ✅ Interface de gestion simple
+- ✅ Pas besoin de systemd (fonctionne sur tous les systèmes)
+
+## Installation rapide
+
+```bash
+# 1. Installer PM2 globalement (une seule fois)
+npm install -g pm2
+
+# 2. Démarrer l'application
+npm run pm2:start
+
+# 3. Configurer le démarrage automatique
+pm2 startup
+# Exécutez la commande affichée (avec sudo)
+pm2 save
+
+# 4. Vérifier le statut
+pm2 status
+```
+
+## Commandes essentielles
+
+### Démarrage et arrêt
+
+```bash
+# Démarrer
+npm run pm2:start
+
+# Arrêter
+npm run pm2:stop
+
+# Redémarrer
+npm run pm2:restart
+
+# Supprimer de PM2
+npm run pm2:delete
+```
+
+### Logs
+
+```bash
+# Voir tous les logs en temps réel
+npm run pm2:logs
+
+# Voir les 100 dernières lignes
+pm2 logs discord-relay --lines 100
+
+# Voir uniquement les erreurs
+pm2 logs discord-relay --err
+
+# Vider les logs
+pm2 flush
+```
+
+### Monitoring
+
+```bash
+# Interface de monitoring temps réel
+npm run pm2:monit
+
+# Voir le statut détaillé
+pm2 show discord-relay
+
+# Lister toutes les applications
+pm2 list
+```
+
+## Configuration (ecosystem.config.cjs)
+
+Le fichier `ecosystem.config.cjs` contient la configuration PM2 :
+
+```javascript
+module.exports = {
+  apps: [{
+    name: 'discord-relay',              // Nom de l'application
+    script: './src/index.js',           // Point d'entrée
+    instances: 1,                       // Nombre d'instances
+    autorestart: true,                  // Redémarrage auto si crash
+    watch: false,                       // Pas de rechargement auto sur changements
+    max_memory_restart: '500M',         // Redémarrage si > 500MB
+    error_file: './logs/err.log',       // Logs d'erreur
+    out_file: './logs/out.log',         // Logs de sortie
+    log_file: './logs/combined.log',    // Logs combinés
+    time: true,                         // Ajouter timestamps
+    merge_logs: true,                   // Merger les logs
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+  }]
+};
+```
+
+## Déploiement sur VPS
+
+### Première installation
+
+```bash
+# 1. Cloner le repository
+cd /opt
+sudo git clone https://github.com/Sweedy3960/VF_DIscordOrchester.git
+cd VF_DIscordOrchester/Discord-relay
+
+# 2. Installer les dépendances
+npm install
+
+# 3. Configurer
+cp .env.example .env
+nano .env  # Remplir les variables
+
+# 4. Installer PM2
+sudo npm install -g pm2
+
+# 5. Démarrer avec PM2
+npm run pm2:start
+
+# 6. Configurer le démarrage automatique
+pm2 startup
+# Exécuter la commande sudo affichée
+pm2 save
+```
+
+### Mise à jour
+
+```bash
+# 1. Aller dans le répertoire
+cd /opt/VF_DIscordOrchester
+
+# 2. Récupérer les mises à jour
+git pull origin main
+
+# 3. Installer les nouvelles dépendances
+cd Discord-relay
+npm install
+
+# 4. Redémarrer l'application
+npm run pm2:restart
+```
+
+## Dépannage
+
+### L'application ne démarre pas
+
+```bash
+# Vérifier les logs d'erreur
+pm2 logs discord-relay --err
+
+# Vérifier la configuration
+cat .env
+
+# Tester manuellement
+npm start
+```
+
+### Logs qui prennent trop de place
+
+```bash
+# Installer le module de rotation de logs
+pm2 install pm2-logrotate
+
+# Configurer (par défaut : rotation tous les jours)
+pm2 set pm2-logrotate:max_size 10M
+pm2 set pm2-logrotate:retain 7
+```
+
+### Redémarrage fréquents
+
+```bash
+# Voir les informations détaillées
+pm2 show discord-relay
+
+# Si mémoire insuffisante, augmenter la limite
+# Modifier max_memory_restart dans ecosystem.config.cjs
+# Puis redémarrer
+npm run pm2:delete
+npm run pm2:start
+```
+
+## Commandes avancées
+
+```bash
+# Redémarrer avec un délai (0 downtime)
+pm2 reload discord-relay
+
+# Exécuter une commande dans le contexte de l'app
+pm2 exec discord-relay -- ls -la
+
+# Sauvegarder la configuration actuelle
+pm2 save
+
+# Restaurer les applications sauvegardées
+pm2 resurrect
+
+# Mettre à jour PM2
+npm install -g pm2@latest
+pm2 update
+```
+
+## Plus d'informations
+
+- Documentation officielle PM2 : https://pm2.keymetrics.io/
+- Guide complet de déploiement : [DEPLOYMENT.md](../DEPLOYMENT.md)

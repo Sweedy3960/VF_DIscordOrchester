@@ -79,6 +79,29 @@ npm start
 `npm run check` effectue une vérification syntaxique rapide. `npm start` lance
 le pont permanent (Ctrl+C pour arrêter).
 
+### Exécution avec PM2 (recommandé pour production)
+
+PM2 permet de gérer l'application comme un service avec redémarrage automatique :
+
+```bash
+# Installation de PM2 (une seule fois)
+npm install -g pm2
+
+# Démarrer l'application
+npm run pm2:start
+
+# Voir les logs en temps réel
+npm run pm2:logs
+
+# Redémarrer
+npm run pm2:restart
+
+# Arrêter
+npm run pm2:stop
+```
+
+Pour plus de détails sur PM2, consultez [DEPLOYMENT.md](./DEPLOYMENT.md).
+
 ### Déploiement sur VPS (production)
 
 Pour faire tourner le bridge en permanence sur un VPS avec démarrage automatique :
