@@ -6,23 +6,17 @@ Système complet pour contrôler les mouvements d'utilisateurs Discord entre sal
 
 Ce projet combine deux composants principaux :
 
-1. **Discord-relay** : Service Node.js hébergé sur VPS qui reçoit les événements MQTT et contrôle les mouvements Discord
-2. **MqttBotCommander** : Firmware ESP32 qui lit les switches physiques et publie les événements sur MQTT
+1. **Discord-relay** : Service Node.js hébergé sur VPS qui reçoit les événements HTTP et contrôle les mouvements Discord
+2. **MqttBotCommander** : Firmware ESP32 qui lit les switches physiques et envoie les événements via HTTP
 
 ## Architecture
 
 ```
-┌─────────────┐         MQTT          ┌──────────────┐
-│   ESP32     │  ──────────────────►  │ MQTT Broker  │
-│   + 3       │     Switch Events     │              │
-│  Switches   │                       └──────┬───────┘
-└─────────────┘                              │
-                                             │ MQTT
-                                             │
-                                      ┌──────▼───────┐
-                                      │ Discord-     │
-                                      │ relay (VPS)  │
-                                      └──────┬───────┘
+┌─────────────┐                       ┌──────────────┐
+│   ESP32     │       HTTPS           │ Discord-     │
+│   + 3       │  ──────────────────►  │ relay (VPS)  │
+│  Switches   │   /vf/switch/event    │ stamya.org   │
+└─────────────┘                       └──────┬───────┘
                                              │
                                              │ Discord API
                                              │
@@ -97,11 +91,11 @@ Créez un bot Discord avec :
 - Permission : **Move Members**
 - Intent : **GUILD_VOICE_STATES**
 
-### MQTT Broker
+### Network Configuration
 
-Configurez un broker MQTT accessible par :
-- L'ESP32 (pour publier les événements)
-- Le VPS (pour recevoir les événements)
+Assurez-vous que :
+- L'ESP32 peut atteindre le VPS sur le port HTTP configuré (par défaut : 3000)
+- Le VPS écoute sur une adresse accessible depuis votre réseau local ou via Internet
 
 ### Mappings
 
@@ -167,26 +161,27 @@ VF_DIscordOrchester/
 
 ### Discord-relay
 - **Node.js** 18+
-- **MQTT.js** - Client MQTT
+- **HTTP Server** - Serveur HTTP natif Node.js
 - **Pino** - Logging
 - **Undici** - HTTP client pour Discord API
 
 ### MqttBotCommander
 - **Arduino Framework** pour ESP32
-- **PubSubClient** - Client MQTT
+- **HTTPClient** - Client HTTP pour ESP32
 - **ArduinoJson** - Sérialisation JSON
 - **PlatformIO** ou **Arduino IDE**
 
 ## Dépannage
 
-### Discord-relay ne se connecte pas à MQTT
-- Vérifiez les credentials dans `.env`
-- Vérifiez que le broker est accessible depuis le VPS
+### Discord-relay ne démarre pas
+- Vérifiez les variables d'environnement dans `.env`
+- Vérifiez que le port HTTP n'est pas déjà utilisé
 - Consultez les logs : `sudo journalctl -u discord-relay -f`
 
-### ESP32 ne publie pas sur MQTT
+### ESP32 n'envoie pas d'événements
 - Vérifiez la connexion WiFi
-- Vérifiez les credentials MQTT dans `config.h`
+- Vérifiez l'adresse HTTP_SERVER dans `config.h` pointe vers le VPS
+- Vérifiez que le port 3000 est accessible depuis l'ESP32
 - Consultez le moniteur série : `pio device monitor`
 
 ### Les utilisateurs ne se déplacent pas
@@ -204,7 +199,8 @@ Pour plus de détails, consultez les sections de dépannage dans :
 
 ⚠️ **Important** :
 - Ne commitez JAMAIS les fichiers `.env` ou `config.h` avec des vrais identifiants
-- Utilisez MQTTS (TLS) pour les communications MQTT
+- Utilisez HTTPS si le VPS est accessible via Internet
+- Configurez un firewall pour limiter l'accès au port HTTP
 - Régénérez immédiatement les tokens Discord s'ils sont exposés
 - Limitez les permissions du bot Discord au strict nécessaire
 

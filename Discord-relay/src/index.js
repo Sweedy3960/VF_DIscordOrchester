@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import http from 'node:http';
 
 import dotenv from 'dotenv';
-import mqtt from 'mqtt';
 import pino from 'pino';
 import { fetch } from 'undici';
 
@@ -11,7 +11,7 @@ dotenv.config();
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
-const requiredEnv = ['APP_ID', 'BOT_TOKEN', 'GUILD_ID', 'MQTT_URL', 'MQTT_TOPIC'];
+const requiredEnv = ['APP_ID', 'BOT_TOKEN', 'GUILD_ID'];
 const missing = requiredEnv.filter((name) => !process.env[name]);
 if (missing.length) {
   logger.error({ missing }, 'Required environment variables are missing');
@@ -22,10 +22,7 @@ const {
   APP_ID,
   BOT_TOKEN,
   GUILD_ID,
-  MQTT_URL,
-  MQTT_USERNAME,
-  MQTT_PASSWORD,
-  MQTT_TOPIC,
+  HTTP_PORT = '3000',
   MAPPING_FILE = './mappings.json',
   MOVE_COOLDOWN_MS = '5000',
   ALL_SWITCHES_HOLD_TIME_MS = '5000'
@@ -57,84 +54,112 @@ const lastMoveByUser = new Map();
 const switchStates = new Map();
 let allSwitchesPressedTimer = null;
 
-const client = mqtt.connect(MQTT_URL, {
-  username: MQTT_USERNAME || undefined,
-  password: MQTT_PASSWORD || undefined,
-  protocolVersion: 5,
-  reconnectPeriod: 5000,
-  clean: true
-});
+// HTTP server to receive switch events
+const server = http.createServer(async (req, res) => {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-client.on('connect', () => {
-  logger.info({ topic: MQTT_TOPIC }, 'Connected to MQTT, subscribing');
-  client.subscribe(MQTT_TOPIC, { qos: 1 }, (err) => {
-    if (err) {
-      logger.error({ err, topic: MQTT_TOPIC }, 'MQTT subscribe failed');
-    }
-  });
-});
-
-client.on('error', (err) => {
-  logger.error({ err }, 'MQTT error');
-});
-
-client.on('message', async (topic, payload) => {
-  let evt;
-  try {
-    evt = JSON.parse(payload.toString('utf-8'));
-  } catch (err) {
-    logger.warn({ err, payload: payload.toString('utf-8') }, 'Invalid JSON payload');
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
     return;
   }
 
-  // Validate switch event structure
-  if (typeof evt.switchId !== 'number' || typeof evt.state !== 'number') {
-    logger.debug({ evt }, 'Ignoring event without valid switchId or state');
-    return;
-  }
-
-  const { switchId, state, timestamp } = evt;
-  const pressed = state === 1;
-
-  logger.debug({ switchId, state, pressed, timestamp }, 'Received switch event');
-
-  // Update switch state
-  switchStates.set(switchId, { pressed, timestamp: timestamp || Date.now() });
-
-  // Check if all switches are pressed
-  const allPressed = areAllSwitchesPressed();
-
-  if (allPressed && !allSwitchesPressedTimer) {
-    // All switches just became pressed - start timer
-    logger.info('All 3 switches pressed, starting timer');
-    const pressTime = Date.now();
+  if (req.method === 'POST' && req.url === '/switch/event') {
+    let body = '';
     
-    allSwitchesPressedTimer = setTimeout(async () => {
-      // Still all pressed after hold time - trigger reset
-      if (areAllSwitchesPressed()) {
-        logger.info('All switches held for 5+ seconds - resetting to default');
-        await handleResetToDefault();
+    req.on('data', (chunk) => {
+      body += chunk.toString();
+    });
+
+    req.on('end', async () => {
+      let evt;
+      try {
+        evt = JSON.parse(body);
+      } catch (err) {
+        logger.warn({ err, body }, 'Invalid JSON payload');
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+        return;
       }
-      allSwitchesPressedTimer = null;
-    }, allSwitchesHoldTimeMs);
 
-    return; // Don't process individual switch while waiting
-  }
+      // Validate switch event structure
+      if (typeof evt.switchId !== 'number' || typeof evt.state !== 'number') {
+        logger.debug({ evt }, 'Ignoring event without valid switchId or state');
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid event structure' }));
+        return;
+      }
 
-  if (!allPressed && allSwitchesPressedTimer) {
-    // Switches released before timeout - move everyone back to office
-    clearTimeout(allSwitchesPressedTimer);
-    allSwitchesPressedTimer = null;
-    
-    logger.info('All switches released before 5 seconds - returning to office');
-    await handleReturnToOffice();
-    return;
-  }
+      const { switchId, state, timestamp } = evt;
+      const pressed = state === 1;
 
-  // Handle single switch press (only if not all switches are pressed)
-  if (!allPressed && pressed) {
-    await handleSingleSwitchPress(switchId);
+      logger.debug({ switchId, state, pressed, timestamp }, 'Received switch event');
+
+      // Update switch state
+      switchStates.set(switchId, { pressed, timestamp: timestamp || Date.now() });
+
+      // Check if all switches are pressed
+      const allPressed = areAllSwitchesPressed();
+
+      if (allPressed && !allSwitchesPressedTimer) {
+        // All switches just became pressed - start timer
+        logger.info('All 3 switches pressed, starting timer');
+        
+        allSwitchesPressedTimer = setTimeout(async () => {
+          // Still all pressed after hold time - trigger reset
+          if (areAllSwitchesPressed()) {
+            logger.info('All switches held for 5+ seconds - resetting to default');
+            await handleResetToDefault();
+          }
+          allSwitchesPressedTimer = null;
+        }, allSwitchesHoldTimeMs);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', message: 'All switches pressed' }));
+        return;
+      }
+
+      if (!allPressed && allSwitchesPressedTimer) {
+        // Switches released before timeout - move everyone back to office
+        clearTimeout(allSwitchesPressedTimer);
+        allSwitchesPressedTimer = null;
+        
+        logger.info('All switches released before 5 seconds - returning to office');
+        await handleReturnToOffice();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', message: 'Returning to office' }));
+        return;
+      }
+
+      // Handle single switch press (only if not all switches are pressed)
+      if (!allPressed && pressed) {
+        await handleSingleSwitchPress(switchId);
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok' }));
+    });
+
+    req.on('error', (err) => {
+      logger.error({ err }, 'Request error');
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    });
+  } else if (req.method === 'GET' && req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', timestamp: Date.now() }));
+  } else {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Not found' }));
   }
+});
+
+const port = Number.parseInt(HTTP_PORT, 10) || 3000;
+server.listen(port, () => {
+  logger.info({ port }, 'HTTP server listening for switch events');
 });
 
 function areAllSwitchesPressed() {
@@ -268,8 +293,8 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 function shutdown() {
-  logger.info('Shutting down bridge');
-  client.end(true, () => {
+  logger.info('Shutting down server');
+  server.close(() => {
     process.exit(0);
   });
 }

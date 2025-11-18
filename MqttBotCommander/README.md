@@ -1,6 +1,6 @@
-# MQTT Bot Commander - ESP32 Switch Controller
+# ESP32 Switch Controller
 
-Firmware ESP32 qui lit l'état de 3 switches physiques et publie les événements sur MQTT.
+Firmware ESP32 qui lit l'état de 3 switches physiques et envoie les événements via HTTP au serveur Discord-relay.
 
 ## Description
 
@@ -37,15 +37,9 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 #define WIFI_SSID "votre_ssid"
 #define WIFI_PASSWORD "votre_password"
 
-// MQTT
-#define MQTT_SERVER "broker.example.com"
-#define MQTT_PORT 8883
-#define MQTT_USERNAME "username"
-#define MQTT_PASSWORD "password"
-
-// Identifiants
-#define ENTERPRISE_ID "your_enterprise_id"
-#define DEVICE_ID "your_device_id"
+// HTTP Server
+#define HTTP_SERVER "stamya.org"  // Adresse de votre serveur Discord-relay
+#define HTTP_BASE_PATH "/vf"  // Chemin de base pour l'API
 
 // GPIO Pins (modifier si nécessaire)
 #define SWITCH_0_PIN 25
@@ -99,7 +93,6 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 2. Installez les bibliothèques requises :
    - Allez dans Croquis → Inclure une bibliothèque → Gérer les bibliothèques
    - Installez :
-     - `PubSubClient` par Nick O'Leary
      - `ArduinoJson` par Benoit Blanchon
 
 3. Ouvrez `src/main.cpp` dans Arduino IDE
@@ -112,14 +105,15 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 
 7. Téléversez : Croquis → Téléverser
 
-## Format des messages MQTT
+## Format des requêtes HTTP
 
-Le firmware publie des messages JSON sur le topic :
+Le firmware envoie des requêtes HTTP POST vers :
 ```
-enterprise/<enterprise_id>/device/<device_id>/switch/event
+https://<HTTP_SERVER><HTTP_BASE_PATH>/switch/event
 ```
+Exemple: `https://stamya.org/vf/switch/event`
 
-Format du payload :
+Format du payload JSON :
 ```json
 {
   "switchId": 0,
@@ -139,11 +133,11 @@ Format du payload :
 - Assurez-vous que le réseau WiFi est en 2.4 GHz (l'ESP32 ne supporte pas le 5 GHz)
 - Vérifiez la force du signal WiFi
 
-### L'ESP32 ne se connecte pas au broker MQTT
-- Vérifiez l'adresse et le port du broker
-- Vérifiez les identifiants MQTT
-- Vérifiez que le broker accepte les connexions depuis l'IP de l'ESP32
-- Consultez les logs du broker MQTT
+### L'ESP32 n'envoie pas de requêtes HTTP
+- Vérifiez l'adresse HTTP_SERVER dans `config.h`
+- Vérifiez que le serveur Discord-relay est en cours d'exécution
+- Vérifiez que le port 3000 est accessible depuis l'ESP32
+- Consultez le moniteur série pour voir les codes de réponse HTTP
 
 ### Les switches ne fonctionnent pas
 - Vérifiez les connexions physiques
@@ -151,18 +145,19 @@ Format du payload :
 - Vérifiez les numéros de GPIO dans `config.h`
 - Consultez le moniteur série pour voir les événements
 
-### Messages non reçus par le Discord-relay
-- Vérifiez que les topics MQTT correspondent entre l'ESP32 et le bridge
+### Événements non reçus par le Discord-relay
+- Vérifiez que l'URL HTTP est correcte (HTTP_SERVER et HTTP_PORT)
 - Vérifiez que le format JSON est correct dans les logs
 - Assurez-vous que le Discord-relay est en cours d'exécution
+- Vérifiez que le firewall n'empêche pas la communication
 
 ## Moniteur série
 
 Le moniteur série affiche :
 - État de connexion WiFi (IP, force du signal)
-- État de connexion MQTT
+- Configuration de l'endpoint HTTP
 - Événements de switches (appui/relâchement)
-- Messages publiés sur MQTT
+- Codes de réponse HTTP et messages envoyés
 
 Vitesse du moniteur série : **115200 baud**
 

@@ -10,6 +10,11 @@ logs/
 *.log
 npm-debug.log*
 
+# PM2
+.pm2/
+pids/
+*.pid
+
 # IDE
 .vscode/
 .idea/

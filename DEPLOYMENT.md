@@ -78,10 +78,7 @@ Ce guide décrit les procédures complètes pour :
    BOT_TOKEN=your_discord_bot_token
    GUILD_ID=your_discord_guild_id
    
-   MQTT_URL=mqtts://your-broker:8883
-   MQTT_TOPIC=enterprise/your_enterprise_id/device/your_device_id/switch/event
-   MQTT_USERNAME=your_mqtt_username
-   MQTT_PASSWORD=your_mqtt_password
+   HTTP_PORT=3000
    
    MOVE_COOLDOWN_MS=5000
    ALL_SWITCHES_HOLD_TIME_MS=5000
@@ -168,6 +165,100 @@ Ce guide décrit les procédures complètes pour :
     sudo journalctl -u discord-relay -f
     ```
 
+### Alternative : Configuration avec PM2
+
+PM2 est un gestionnaire de processus populaire pour Node.js qui offre une gestion simplifiée et des fonctionnalités avancées.
+
+#### Installation de PM2
+
+```bash
+# Installation globale de PM2
+sudo npm install -g pm2
+
+# Vérification de l'installation
+pm2 --version
+```
+
+#### Configuration et démarrage
+
+1. **Créer le répertoire pour les logs**
+   ```bash
+   cd /opt/VF_DIscordOrchester/Discord-relay
+   mkdir -p logs
+   ```
+
+2. **Démarrer l'application avec PM2**
+   ```bash
+   npm run pm2:start
+   # ou directement
+   pm2 start ecosystem.config.cjs
+   ```
+
+3. **Configurer PM2 pour démarrer au boot**
+   ```bash
+   pm2 startup
+   # Suivez les instructions affichées (copier-coller la commande sudo)
+   
+   # Sauvegarder la liste des applications
+   pm2 save
+   ```
+
+#### Commandes PM2 utiles
+
+```bash
+# Voir le statut
+pm2 status
+pm2 list
+
+# Voir les logs en temps réel
+npm run pm2:logs
+# ou
+pm2 logs discord-relay
+
+# Voir les logs avec filtrage
+pm2 logs discord-relay --lines 100
+pm2 logs discord-relay --err  # Erreurs uniquement
+
+# Redémarrer l'application
+npm run pm2:restart
+# ou
+pm2 restart discord-relay
+
+# Arrêter l'application
+npm run pm2:stop
+# ou
+pm2 stop discord-relay
+
+# Monitoring en temps réel
+npm run pm2:monit
+# ou
+pm2 monit
+
+# Supprimer de PM2
+npm run pm2:delete
+# ou
+pm2 delete discord-relay
+```
+
+#### Mise à jour avec PM2
+
+Pour mettre à jour l'application gérée par PM2 :
+
+```bash
+# 1. Aller dans le répertoire
+cd /opt/VF_DIscordOrchester
+
+# 2. Récupérer les mises à jour
+git pull origin main
+
+# 3. Installer les dépendances
+cd Discord-relay
+npm install
+
+# 4. Redémarrer avec PM2
+npm run pm2:restart
+```
+
 ### Procédure de Mise à Jour
 
 Voici la procédure complète pour mettre à jour le Discord-relay sur votre VPS :
@@ -247,7 +338,7 @@ Si pas d'erreurs, testez manuellement :
 npm start
 ```
 
-Vérifiez que le service démarre correctement et se connecte à MQTT et Discord.
+Vérifiez que le service démarre correctement et écoute sur le port HTTP.
 Arrêtez avec `Ctrl+C`.
 
 #### Étape 8 : Redémarrage du service
@@ -291,21 +382,22 @@ Testez les switches pour vérifier que tout fonctionne :
    npm start
    ```
 
-#### Erreurs de connexion MQTT
+#### Erreurs de port HTTP
 
-1. Vérifiez l'URL et les credentials :
+1. Vérifiez la configuration du port :
    ```bash
-   cat .env | grep MQTT
+   cat .env | grep HTTP_PORT
    ```
 
-2. Testez la connectivité au broker :
+2. Testez que le port est accessible :
    ```bash
-   telnet your-broker-address 8883
-   # ou
-   nc -zv your-broker-address 8883
+   curl http://localhost:3000/health
    ```
 
-3. Vérifiez les logs du broker MQTT
+3. Vérifiez qu'aucun autre service n'utilise le port :
+   ```bash
+   sudo netstat -tulpn | grep :3000
+   ```
 
 #### Erreurs Discord API
 
@@ -372,15 +464,9 @@ Testez les switches pour vérifier que tout fonctionne :
    #define WIFI_SSID "votre_ssid"
    #define WIFI_PASSWORD "votre_password"
    
-   // MQTT Configuration
-   #define MQTT_SERVER "votre-broker.com"
-   #define MQTT_PORT 8883
-   #define MQTT_USERNAME "votre_username"
-   #define MQTT_PASSWORD "votre_password"
-   
-   // MQTT Topics
-   #define ENTERPRISE_ID "votre_enterprise_id"
-   #define DEVICE_ID "votre_device_id"
+   // HTTP Server Configuration
+   #define HTTP_SERVER "stamya.org"  // Adresse de votre serveur Discord-relay
+   #define HTTP_BASE_PATH "/vf"  // Chemin de base pour l'API
    
    // GPIO Pins (adaptez si nécessaire)
    #define SWITCH_0_PIN 25
@@ -422,8 +508,9 @@ Testez les switches pour vérifier que tout fonctionne :
    
    Vous devriez voir :
    - Connexion WiFi
-   - Connexion MQTT
+   - Configuration de l'endpoint HTTP
    - Événements de switches
+   - Codes de réponse HTTP
 
 #### Méthode 2 : Avec Arduino IDE
 
@@ -446,7 +533,6 @@ Testez les switches pour vérifier que tout fonctionne :
    
    - Croquis → Inclure une bibliothèque → Gérer les bibliothèques
    - Installez :
-     - `PubSubClient` par Nick O'Leary
      - `ArduinoJson` par Benoit Blanchon
 
 4. **Ouverture du projet**
@@ -525,7 +611,7 @@ pio device monitor
 
 Vérifiez que :
 - L'ESP32 se connecte au WiFi
-- L'ESP32 se connecte au MQTT
+- L'ESP32 peut envoyer des requêtes HTTP au serveur
 - Les switches fonctionnent correctement
 
 ### Dépannage ESP32
@@ -570,15 +656,23 @@ Vérifiez que :
    pio device monitor
    ```
 
-#### L'ESP32 ne se connecte pas à MQTT
+#### L'ESP32 n'envoie pas de requêtes HTTP
 
-1. **Testez le broker** depuis un autre client
+1. **Vérifiez l'adresse HTTP_SERVER** dans `config.h`
 
-2. **Vérifiez les credentials** dans `config.h`
+2. **Testez l'accessibilité du serveur** :
+   ```bash
+   ping <HTTP_SERVER>
+   curl https://<HTTP_SERVER><HTTP_BASE_PATH>/health
+   ```
+   Exemple: `curl https://stamya.org/vf/health`
 
-3. **Vérifiez le port** : 1883 (non-sécurisé) ou 8883 (TLS)
+3. **Vérifiez le chemin de base** : Par défaut `/vf`
 
-4. **Vérifiez les logs MQTT** sur le broker
+4. **Vérifiez les logs** sur le serveur Discord-relay :
+   ```bash
+   sudo journalctl -u discord-relay -f
+   ```
 
 #### Les switches ne fonctionnent pas
 
@@ -596,19 +690,25 @@ Vérifiez que :
    ```
    Vous devriez voir les événements PRESSED/RELEASED
 
-#### Les messages MQTT ne sont pas reçus
+#### Les événements ne sont pas reçus par Discord-relay
 
-1. **Vérifiez le topic MQTT** :
-   - Dans l'ESP32 `config.h`
-   - Dans le Discord-relay `.env`
-   - Ils doivent correspondre !
+1. **Vérifiez l'adresse HTTP** :
+   - Dans l'ESP32 `config.h` : HTTP_SERVER doit pointer vers le VPS
+   - Vérifiez que le chemin de base est correct (par défaut `/vf`)
 
-2. **Utilisez un client MQTT pour tester** :
+2. **Testez l'endpoint** :
    ```bash
-   mosquitto_sub -h broker.example.com -t "enterprise/+/device/+/switch/event" -v
+   curl -X POST https://<HTTP_SERVER><HTTP_BASE_PATH>/switch/event \
+     -H "Content-Type: application/json" \
+     -d '{"switchId":0,"state":1,"timestamp":12345}'
    ```
+   Exemple: `curl -X POST https://stamya.org/vf/switch/event -H "Content-Type: application/json" -d '{"switchId":0,"state":1,"timestamp":12345}'`
 
-3. **Vérifiez les ACL** sur le broker MQTT
+3. **Vérifiez le firewall** :
+   ```bash
+   sudo ufw status
+   sudo ufw allow 3000/tcp
+   ```
 
 ---
 
@@ -619,7 +719,7 @@ Vérifiez que :
 - [ ] VPS configuré avec Node.js et Git
 - [ ] Repository cloné sur le VPS
 - [ ] Discord bot créé avec permissions appropriées
-- [ ] Broker MQTT configuré et accessible
+- [ ] Port HTTP 3000 accessible depuis l'ESP32
 - [ ] ESP32 et composants matériels prêts
 
 ### Discord-relay
@@ -632,12 +732,12 @@ Vérifiez que :
 
 ### ESP32 Firmware
 
-- [ ] `config.h` configuré avec WiFi et MQTT
+- [ ] `config.h` configuré avec WiFi et HTTP_SERVER
 - [ ] Switches câblés correctement
 - [ ] Firmware compilé sans erreurs
 - [ ] Firmware téléversé sur l'ESP32
 - [ ] ESP32 connecté au WiFi
-- [ ] ESP32 connecté au MQTT
+- [ ] ESP32 peut envoyer des requêtes HTTP au serveur
 - [ ] Switches testés et fonctionnels
 
 ### Tests Fonctionnels

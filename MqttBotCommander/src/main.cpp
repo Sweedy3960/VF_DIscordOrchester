@@ -1,12 +1,11 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <PubSubClient.h>
+#include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include "config.h"
 
-// WiFi and MQTT clients
+// WiFi client
 WiFiClient espClient;
-PubSubClient mqttClient(espClient);
 
 // Switch state tracking
 struct SwitchState {
@@ -24,11 +23,9 @@ SwitchState switches[3] = {
 
 // Function declarations
 void setupWiFi();
-void setupMQTT();
 void reconnectWiFi();
-void reconnectMQTT();
 void checkSwitches();
-void publishSwitchEvent(int switchId, int state);
+void sendSwitchEvent(int switchId, int state);
 void setupSwitches();
 
 void setup() {
@@ -45,9 +42,7 @@ void setup() {
   // Connect to WiFi
   setupWiFi();
   
-  // Setup MQTT client
-  setupMQTT();
-  
+  Serial.printf("HTTP endpoint: %s\n", HTTP_ENDPOINT);
   Serial.println("\nSetup complete! Monitoring switches...\n");
 }
 
@@ -56,14 +51,6 @@ void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     reconnectWiFi();
   }
-  
-  // Ensure MQTT is connected
-  if (!mqttClient.connected()) {
-    reconnectMQTT();
-  }
-  
-  // Process MQTT messages
-  mqttClient.loop();
   
   // Check switch states
   checkSwitches();
@@ -109,10 +96,7 @@ void setupWiFi() {
   }
 }
 
-void setupMQTT() {
-  mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
-  Serial.printf("MQTT configured: %s:%d\n", MQTT_SERVER, MQTT_PORT);
-}
+
 
 void reconnectWiFi() {
   Serial.println("WiFi connection lost. Reconnecting...");
@@ -121,35 +105,7 @@ void reconnectWiFi() {
   setupWiFi();
 }
 
-void reconnectMQTT() {
-  static unsigned long lastAttempt = 0;
-  unsigned long now = millis();
-  
-  // Avoid hammering the broker with connection attempts
-  if (now - lastAttempt < MQTT_RECONNECT_DELAY) {
-    return;
-  }
-  
-  lastAttempt = now;
-  
-  Serial.printf("Attempting MQTT connection to %s:%d...\n", MQTT_SERVER, MQTT_PORT);
-  
-  // Attempt to connect
-  bool connected = false;
-  if (strlen(MQTT_USERNAME) > 0 && strlen(MQTT_PASSWORD) > 0) {
-    connected = mqttClient.connect(MQTT_CLIENT_ID, MQTT_USERNAME, MQTT_PASSWORD);
-  } else {
-    connected = mqttClient.connect(MQTT_CLIENT_ID);
-  }
-  
-  if (connected) {
-    Serial.println("MQTT connected!");
-    Serial.printf("Publishing to topic: %s\n", MQTT_TOPIC_PREFIX);
-  } else {
-    Serial.printf("MQTT connection failed, rc=%d\n", mqttClient.state());
-    Serial.println("Will retry in 5 seconds...");
-  }
-}
+
 
 void checkSwitches() {
   unsigned long now = millis();
@@ -175,8 +131,8 @@ void checkSwitches() {
         
         Serial.printf("Switch %d: %s\n", i, state == 1 ? "PRESSED" : "RELEASED");
         
-        // Publish the event
-        publishSwitchEvent(i, state);
+        // Send the event
+        sendSwitchEvent(i, state);
       }
     }
     
@@ -184,11 +140,13 @@ void checkSwitches() {
   }
 }
 
-void publishSwitchEvent(int switchId, int state) {
-  if (!mqttClient.connected()) {
-    Serial.println("Cannot publish: MQTT not connected");
+void sendSwitchEvent(int switchId, int state) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Cannot send: WiFi not connected");
     return;
   }
+  
+  HTTPClient http;
   
   // Create JSON document
   StaticJsonDocument<200> doc;
@@ -197,15 +155,22 @@ void publishSwitchEvent(int switchId, int state) {
   doc["timestamp"] = millis();
   
   // Serialize to string
-  char jsonBuffer[200];
-  serializeJson(doc, jsonBuffer);
+  String jsonString;
+  serializeJson(doc, jsonString);
   
-  // Publish to MQTT
-  bool published = mqttClient.publish(MQTT_TOPIC_PREFIX, jsonBuffer, false);
+  // Send HTTP POST request
+  http.begin(HTTP_ENDPOINT);
+  http.addHeader("Content-Type", "application/json");
   
-  if (published) {
-    Serial.printf("Published: %s\n", jsonBuffer);
+  int httpResponseCode = http.POST(jsonString);
+  
+  if (httpResponseCode > 0) {
+    Serial.printf("HTTP Response code: %d\n", httpResponseCode);
+    String response = http.getString();
+    Serial.printf("Response: %s\n", response.c_str());
   } else {
-    Serial.println("Failed to publish message");
+    Serial.printf("Error sending HTTP POST: %s\n", http.errorToString(httpResponseCode).c_str());
   }
+  
+  http.end();
 }

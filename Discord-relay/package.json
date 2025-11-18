@@ -1,7 +1,7 @@
 {
   "name": "discord-relay",
-  "version": "0.1.0",
-  "description": "MQTT to Discord bridge for KWS events",
+  "version": "0.2.0",
+  "description": "HTTP to Discord bridge for switch events",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
@@ -9,11 +9,16 @@
     "check": "node --check src/index.js",
     "test:scripts": "./test-scripts.sh",
     "configure": "./configure.sh",
-    "quickstart": "./quickstart.sh"
+    "quickstart": "./quickstart.sh",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop discord-relay",
+    "pm2:restart": "pm2 restart discord-relay",
+    "pm2:delete": "pm2 delete discord-relay",
+    "pm2:logs": "pm2 logs discord-relay",
+    "pm2:monit": "pm2 monit"
   },
   "dependencies": {
     "dotenv": "16.4.5",
-    "mqtt": "5.3.5",
     "pino": "9.3.1",
     "undici": "6.19.8"
   }
