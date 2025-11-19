@@ -4,7 +4,7 @@ Ce service relie les événements de switches physiques envoyés par l'ESP32 via
 afin de déplacer automatiquement des utilisateurs entre les salons vocaux.
 
 ## Fonctionnement
-- Écoute les requêtes HTTP POST sur l'endpoint `/switch/event`
+- Écoute les requêtes HTTP POST sur l'endpoint configuré (par défaut `/vf/switch/event`)
 - Chaque requête JSON doit contenir `switchId` (0, 1 ou 2), `state` (1=appuyé, 0=relâché) 
   et optionnellement `timestamp`.
 - Gère trois modes d'action selon les switches appuyés :
@@ -32,6 +32,7 @@ Copy-Item .env.example .env
 
 - `.env` : renseignez les identifiants Discord (`APP_ID`, `BOT_TOKEN`, `GUILD_ID`),
   le port HTTP (`HTTP_PORT`, par défaut 3000),
+  le chemin de base (`HTTP_BASE_PATH`, par défaut `/vf`),
   et les temps de cooldown (`MOVE_COOLDOWN_MS`, `ALL_SWITCHES_HOLD_TIME_MS`).
 - `mappings.json` : liste des correspondances switch → utilisateur → cible.
 
@@ -128,8 +129,21 @@ Le script vous guide à travers la configuration du bot Discord et des mappings 
 
 ## Architecture HTTP
 Ce service fonctionne comme un serveur HTTP simple qui :
-- Reçoit les événements de switches de l'ESP32 via HTTP POST
+- Reçoit les événements de switches de l'ESP32 via HTTP POST sur `{HTTP_BASE_PATH}/switch/event`
 - Orchestre les actions Discord en réponse
-- Fournit un endpoint `/health` pour vérifier l'état du service
+- Fournit un endpoint `{HTTP_BASE_PATH}/health` pour vérifier l'état du service
 
-**Note de déploiement**: Si déployé derrière un reverse proxy (nginx, Apache), configurez le proxy pour rediriger un chemin spécifique (ex: `/vf`) vers ce service. L'ESP32 doit être configuré avec le chemin complet (ex: `https://stamya.org/vf/switch/event`).
+### Configuration du chemin de base
+Le serveur écoute par défaut sur le chemin de base `/vf`, ce qui signifie que les endpoints sont :
+- `http://localhost:3000/vf/switch/event` - Pour recevoir les événements de switches
+- `http://localhost:3000/vf/health` - Pour vérifier l'état du service
+
+Vous pouvez modifier le chemin de base en définissant `HTTP_BASE_PATH` dans votre fichier `.env` :
+```env
+HTTP_BASE_PATH=/vf
+```
+
+**Important**: L'ESP32 doit être configuré avec le même chemin de base dans `include/config.h` :
+```cpp
+#define HTTP_BASE_PATH "/vf"
+```

@@ -6,8 +6,92 @@ Ce guide décrit les procédures complètes pour :
 
 ---
 
+## 🚀 Guide Rapide de Mise à Jour
+
+**Si vous venez de faire `git pull` et que vous obtenez une erreur "Cannot GET /vf", suivez ces étapes :**
+
+### Avec systemd (service système)
+
+```bash
+# 1. Se connecter au VPS
+ssh user@your-vps-ip
+
+# 2. Aller dans le répertoire du projet
+cd /opt/VF_DIscordOrchester
+
+# 3. Récupérer les dernières modifications
+git pull origin main
+
+# 4. Installer les dépendances mises à jour
+cd Discord-relay
+npm install
+
+# 5. Vérifier votre fichier .env contient la nouvelle variable
+# Si HTTP_BASE_PATH n'existe pas dans votre .env, ajoutez-le :
+echo "HTTP_BASE_PATH=/vf" >> .env
+
+# 6. Redémarrer le service
+sudo systemctl restart discord-relay
+
+# 7. Vérifier que tout fonctionne
+sudo systemctl status discord-relay
+sudo journalctl -u discord-relay -f
+
+# 8. Tester l'endpoint (dans un autre terminal)
+curl https://stamya.org/vf/health
+```
+
+### Avec PM2
+
+```bash
+# 1. Se connecter au VPS
+ssh user@your-vps-ip
+
+# 2. Aller dans le répertoire du projet
+cd /opt/VF_DIscordOrchester
+
+# 3. Récupérer les dernières modifications
+git pull origin main
+
+# 4. Installer les dépendances mises à jour
+cd Discord-relay
+npm install
+
+# 5. Vérifier votre fichier .env contient la nouvelle variable
+# Si HTTP_BASE_PATH n'existe pas dans votre .env, ajoutez-le :
+echo "HTTP_BASE_PATH=/vf" >> .env
+
+# 6. Redémarrer avec PM2
+npm run pm2:restart
+# ou
+pm2 restart discord-relay
+
+# 7. Vérifier que tout fonctionne
+pm2 status
+pm2 logs discord-relay
+
+# 8. Tester l'endpoint (dans un autre terminal)
+curl https://stamya.org/vf/health
+```
+
+### Vérification
+
+Après le redémarrage, vous devriez voir dans les logs :
+```
+{"level":30,"time":...,"port":3000,"basePath":"/vf","msg":"HTTP server listening for switch events"}
+```
+
+Et le endpoint `/vf/health` devrait répondre :
+```bash
+$ curl https://stamya.org/vf/health
+{"status":"ok","timestamp":1234567890}
+```
+
+---
+
 ## Table des Matières
 
+- [🚀 Guide Rapide de Mise à Jour](#-guide-rapide-de-mise-à-jour)
 - [Partie 1 : Discord-relay sur VPS](#partie-1--discord-relay-sur-vps)
   - [Installation Initiale](#installation-initiale)
   - [Procédure de Mise à Jour](#procédure-de-mise-à-jour)
@@ -79,6 +163,7 @@ Ce guide décrit les procédures complètes pour :
    GUILD_ID=your_discord_guild_id
    
    HTTP_PORT=3000
+   HTTP_BASE_PATH=/vf
    
    MOVE_COOLDOWN_MS=5000
    ALL_SWITCHES_HOLD_TIME_MS=5000
