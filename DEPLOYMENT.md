@@ -476,7 +476,7 @@ Testez les switches pour vérifier que tout fonctionne :
 
 2. Testez que le port est accessible :
    ```bash
-   curl http://localhost:3000/health
+   curl http://localhost:3000/vf/health
    ```
 
 3. Vérifiez qu'aucun autre service n'utilise le port :
@@ -496,6 +496,22 @@ Testez les switches pour vérifier que tout fonctionne :
    - Le bot doit avoir l'intent "GUILD_VOICE_STATES"
 
 3. Vérifiez que le GUILD_ID et les channel IDs sont corrects
+
+#### Erreurs "Discord API responded with 200" dans les logs
+
+Si vous voyez des erreurs comme `Error: Discord API responded with 200` avec des données JSON de membres dans les logs, cela indique que vous utilisez une ancienne version du code.
+
+**Solution :** Mettez à jour vers la dernière version qui gère correctement ces cas :
+
+```bash
+cd /opt/VF_DIscordOrchester
+git pull origin main
+cd Discord-relay
+npm install
+pm2 restart discord-relay  # ou sudo systemctl restart discord-relay
+```
+
+**Explication :** L'API Discord retourne un code 200 avec les données du membre quand l'utilisateur n'est pas dans un salon vocal. Les versions récentes du code gèrent ce cas correctement en tant qu'information de débogage plutôt qu'une erreur.
 
 #### Les utilisateurs ne se déplacent pas
 
