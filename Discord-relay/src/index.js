@@ -279,17 +279,39 @@ async function moveMember({ userId, channelId }) {
     body
   });
 
-  if (response.status === 200 || response.status === 204) {
+  // Handle successful responses
+  if (response.status === 204) {
     logger.info({ userId, channelId }, 'Member moved successfully');
     return;
   }
 
+  if (response.status === 200) {
+    // Status 200 with body means the request was valid but may not have resulted in a move
+    // This happens when the user is not in a voice channel
+    const text = await response.text();
+    try {
+      const member = JSON.parse(text);
+      // Check if user is actually in a voice channel
+      if (!member.channel_id) {
+        logger.debug({ userId, channelId }, 'User is not in a voice channel, cannot move');
+      } else {
+        logger.info({ userId, channelId, currentChannel: member.channel_id }, 'Member move request processed');
+      }
+    } catch (parseError) {
+      // If we can't parse the response, just log it
+      logger.debug({ userId, channelId, response: text }, 'Received 200 response');
+    }
+    return;
+  }
+
+  // Handle rate limiting
   const text = await response.text();
   if (response.status === 429) {
     logger.warn({ userId, body: text }, 'Rate limited by Discord');
     return;
   }
 
+  // Handle other errors
   throw new Error(`Discord API responded with ${response.status}: ${text}`);
 }
 
