@@ -77,9 +77,26 @@ pm2 show discord-relay
 pm2 list
 ```
 
-## Configuration (ecosystem.config.cjs)
+## Configuration
 
-Le fichier `ecosystem.config.cjs` contient la configuration PM2 :
+Le projet contient deux fichiers de configuration PM2 :
+- `ecosystem.config.cjs` : Configuration principale (CommonJS)
+- `ecosystem.config.js` : Wrapper ES Module (permet d'utiliser `pm2 start` sans argument)
+
+Vous pouvez démarrer l'application de trois façons :
+
+```bash
+# Méthode recommandée : via npm scripts
+npm run pm2:start
+
+# Alternative : spécifier le fichier .cjs
+pm2 start ecosystem.config.cjs
+
+# Alternative : utiliser le wrapper .js (depuis la racine du projet)
+pm2 start
+```
+
+Configuration dans `ecosystem.config.cjs` :
 
 ```javascript
 module.exports = {
@@ -99,6 +116,8 @@ module.exports = {
   }]
 };
 ```
+
+**Note**: Le fichier `.cjs` est nécessaire car ce projet utilise ES modules (`"type": "module"` dans package.json). Le fichier `.js` est un wrapper qui permet à PM2 de trouver la configuration automatiquement.
 
 ## Déploiement sur VPS
 
@@ -147,6 +166,19 @@ npm run pm2:restart
 ```
 
 ## Dépannage
+
+### Erreur "File ecosystem.config.js not found"
+
+Si vous voyez cette erreur avec `pm2 start`, utilisez plutôt :
+```bash
+# Méthode recommandée
+npm run pm2:start
+
+# Alternative
+pm2 start ecosystem.config.cjs
+```
+
+**Note**: Le fichier `ecosystem.config.js` devrait exister dans le projet et permet d'utiliser `pm2 start` sans argument. Si vous avez cette erreur, assurez-vous que vous êtes bien dans le répertoire `Discord-relay/` et que le fichier existe.
 
 ### L'application ne démarre pas
 

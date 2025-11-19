@@ -1,3 +1,12 @@
+// PM2 ecosystem configuration (CommonJS version)
+// This is the canonical configuration file.
+// The ecosystem.config.js file is an ES module wrapper that imports this file.
+// 
+// Usage:
+//   npm run pm2:start           (recommended)
+//   pm2 start ecosystem.config.cjs
+//   pm2 start                   (uses ecosystem.config.js wrapper)
+
 module.exports = {
   apps: [{
     name: 'discord-relay',
