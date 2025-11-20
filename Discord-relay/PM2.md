@@ -18,15 +18,18 @@ PM2 offre plusieurs avantages :
 # 1. Installer PM2 globalement (une seule fois)
 npm install -g pm2
 
-# 2. Démarrer l'application
+# 2. Valider la configuration (IMPORTANT!)
+npm run validate
+
+# 3. Démarrer l'application
 npm run pm2:start
 
-# 3. Configurer le démarrage automatique
+# 4. Configurer le démarrage automatique
 pm2 startup
 # Exécutez la commande affichée (avec sudo)
 pm2 save
 
-# 4. Vérifier le statut
+# 5. Vérifier le statut
 pm2 status
 ```
 
@@ -166,6 +169,33 @@ npm run pm2:restart
 ```
 
 ## Dépannage
+
+### Application en statut "errored" ou redémarrages constants
+
+Si vous voyez que l'application redémarre constamment (colonne ↺ avec un nombre élevé) ou est en statut "errored" :
+
+```bash
+# 1. Vérifier les logs d'erreur
+pm2 logs discord-relay --err --lines 50
+
+# 2. Valider la configuration
+npm run validate
+
+# 3. Si la validation échoue, corriger le problème
+# Exemple : créer ou éditer le fichier .env
+cp .env.example .env
+nano .env
+
+# 4. Redémarrer après correction
+pm2 restart discord-relay
+```
+
+**Causes communes** :
+- Fichier `.env` manquant ou mal configuré
+- Variables d'environnement manquantes (APP_ID, BOT_TOKEN, GUILD_ID)
+- Répertoire `logs/` manquant (créé automatiquement maintenant)
+
+Pour plus de détails, consultez le [Guide de Dépannage Complet](./TROUBLESHOOTING.md).
 
 ### Erreur "File ecosystem.config.js not found"
 

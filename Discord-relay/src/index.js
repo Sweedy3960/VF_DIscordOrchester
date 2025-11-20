@@ -15,6 +15,14 @@ const requiredEnv = ['APP_ID', 'BOT_TOKEN', 'GUILD_ID'];
 const missing = requiredEnv.filter((name) => !process.env[name]);
 if (missing.length) {
   logger.error({ missing }, 'Required environment variables are missing');
+  logger.error('');
+  logger.error('To fix this issue:');
+  logger.error('1. Create a .env file from the template: cp .env.example .env');
+  logger.error('2. Edit the .env file and add your Discord credentials');
+  logger.error('3. Make sure to set: APP_ID, BOT_TOKEN, and GUILD_ID');
+  logger.error('4. Restart the application');
+  logger.error('');
+  logger.error('For more information, see README.md');
   process.exit(1);
 }
 

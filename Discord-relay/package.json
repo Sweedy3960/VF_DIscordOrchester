@@ -7,10 +7,11 @@
   "scripts": {
     "start": "node src/index.js",
     "check": "node --check src/index.js",
+    "validate": "node validate-config.js",
     "test:scripts": "./test-scripts.sh",
     "configure": "./configure.sh",
     "quickstart": "./quickstart.sh",
-    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:start": "npm run validate && pm2 start ecosystem.config.cjs",
     "pm2:stop": "pm2 stop discord-relay",
     "pm2:restart": "pm2 restart discord-relay",
     "pm2:delete": "pm2 delete discord-relay",
