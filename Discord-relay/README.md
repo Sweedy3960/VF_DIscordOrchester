@@ -1,16 +1,23 @@
 # Discord Relay Bridge
 
-Ce service relie les événements de switches physiques envoyés par l'ESP32 via HTTP à Discord,
+Service multi-utilisateurs qui relie les événements de switches physiques envoyés par plusieurs ESP32 via HTTP à Discord,
 afin de déplacer automatiquement des utilisateurs entre les salons vocaux.
+
+## 🎯 Nouveautés - Multi-Utilisateurs
+
+- **Interface web de gestion** accessible à `{HTTP_BASE_PATH}` (par défaut `/vf`)
+- **Support multi-appareils** : plusieurs utilisateurs peuvent enregistrer leurs propres ESP32
+- **Mappings personnalisés** : chaque appareil a sa propre configuration de switches
+- **API REST** pour gérer les appareils et leurs configurations
 
 ## Fonctionnement
 - Écoute les requêtes HTTP POST sur l'endpoint configuré (par défaut `/vf/switch/event`)
-- Chaque requête JSON doit contenir `switchId` (0, 1 ou 2), `state` (1=appuyé, 0=relâché) 
+- Chaque requête JSON contient `deviceId`, `switchId` (0, 1 ou 2), `state` (1=appuyé, 0=relâché) 
   et optionnellement `timestamp`.
-- Gère trois modes d'action selon les switches appuyés :
+- Gère trois modes d'action selon les switches appuyés (par appareil) :
   - **Switch unique** : Déplace l'utilisateur du switch et sa cible vers le salon "Direct"
-  - **3 switches < 5 sec** : Ramène tous les utilisateurs au salon "Office" 
-  - **3 switches ≥ 5 sec** : Réinitialise la configuration et ramène tout le monde au salon "Office"
+  - **3 switches < 5 sec** : Ramène tous les utilisateurs de cet appareil au salon "Office" 
+  - **3 switches ≥ 5 sec** : Réinitialise la configuration de l'appareil et ramène tout le monde au salon "Office"
 - Appelle l'API Discord `PATCH /guilds/{guild}/members/{user}` pour déplacer
   les utilisateurs si le cooldown n'est pas actif.
 
@@ -22,51 +29,52 @@ afin de déplacer automatiquement des utilisateurs entre les salons vocaux.
 
 ## Installation
 
-```powershell
-cd bridge/discord-relay
+```bash
+cd Discord-relay
 npm install
-Copy-Item .env.example .env
+cp .env.example .env
+cp devices.json.example devices.json
 ```
 
-Éditez ensuite `.env` et `mappings.json` :
+Éditez ensuite `.env` et `devices.json` :
 
-- `.env` : renseignez les identifiants Discord (`APP_ID`, `BOT_TOKEN`, `GUILD_ID`),
-  le port HTTP (`HTTP_PORT`, par défaut 3000),
-  le chemin de base (`HTTP_BASE_PATH`, par défaut `/vf`),
-  et les temps de cooldown (`MOVE_COOLDOWN_MS`, `ALL_SWITCHES_HOLD_TIME_MS`).
-- `mappings.json` : liste des correspondances switch → utilisateur → cible.
+### Configuration `.env`
 
-Exemple de configuration dans `mappings.json` :
+Renseignez les identifiants Discord et paramètres du serveur :
+
+```env
+# Discord Bot Configuration
+APP_ID=your_discord_app_id_here
+BOT_TOKEN=your_discord_bot_token_here
+GUILD_ID=your_discord_guild_id_here
+
+# HTTP Server Configuration
+HTTP_PORT=3000
+HTTP_BASE_PATH=/vf
+
+# Optional Configuration
+DEVICES_FILE=./devices.json
+MOVE_COOLDOWN_MS=5000
+ALL_SWITCHES_HOLD_TIME_MS=5000
+```
+
+### Configuration `devices.json`
+
+Configurez les channels Discord par défaut :
 
 ```json
 {
-  "switches": [
-    {
-      "switchId": 0,
-      "userId": "123456789012345678",
-      "targetUserId": "234567890123456789"
-    },
-    {
-      "switchId": 1,
-      "userId": "234567890123456789",
-      "targetUserId": "345678901234567890"
-    },
-    {
-      "switchId": 2,
-      "userId": "345678901234567890",
-      "targetUserId": "123456789012345678"
-    }
-  ],
+  "devices": [],
   "officeChannelId": "OFFICE_VOICE_CHANNEL_ID",
   "directChannelId": "DIRECT_VOICE_CHANNEL_ID"
 }
 ```
 
-- `switchId` : Identifiant du switch (0, 1 ou 2)
-- `userId` : ID Discord de l'utilisateur propriétaire du switch
-- `targetUserId` : ID Discord de la personne avec qui communiquer
-- `officeChannelId` : ID du salon vocal principal (où tout le monde travaille)
-- `directChannelId` : ID du salon vocal pour conversations 1-on-1
+**Note importante** : Le tableau `devices` démarre vide. Les appareils sont ensuite enregistrés via l'interface web !
+
+### Migration depuis l'ancienne version
+
+Si vous aviez un fichier `mappings.json` de l'ancienne version, il sera automatiquement migré vers `devices.json` en créant un appareil "LEGACY-DEVICE" au premier démarrage.
 
 ## Exécution
 
@@ -128,15 +136,30 @@ Le script vous guide à travers la configuration du bot Discord et des mappings 
   les mouvements répétés et éviter les rate limits.
 
 ## Architecture HTTP
-Ce service fonctionne comme un serveur HTTP simple qui :
-- Reçoit les événements de switches de l'ESP32 via HTTP POST sur `{HTTP_BASE_PATH}/switch/event`
-- Orchestre les actions Discord en réponse
-- Fournit un endpoint `{HTTP_BASE_PATH}/health` pour vérifier l'état du service
+
+Ce service fonctionne comme un serveur HTTP qui fournit :
+
+### Endpoints Web UI
+- `GET {HTTP_BASE_PATH}` - Interface web de gestion des appareils (HTML)
+- `GET {HTTP_BASE_PATH}/health` - Health check
+
+### API REST pour les appareils
+- `GET {HTTP_BASE_PATH}/api/devices` - Liste tous les appareils
+- `POST {HTTP_BASE_PATH}/api/devices` - Enregistre un nouvel appareil
+- `DELETE {HTTP_BASE_PATH}/api/devices/{deviceId}` - Supprime un appareil
+- `GET {HTTP_BASE_PATH}/api/devices/{deviceId}/mappings` - Récupère les mappings d'un appareil
+- `PUT {HTTP_BASE_PATH}/api/devices/{deviceId}/mappings` - Met à jour les mappings d'un appareil
+
+### Endpoint pour les événements ESP32
+- `POST {HTTP_BASE_PATH}/switch/event` - Reçoit les événements de switches
 
 ### Configuration du chemin de base
-Le serveur écoute par défaut sur le chemin de base `/vf`, ce qui signifie que les endpoints sont :
-- `http://localhost:3000/vf/switch/event` - Pour recevoir les événements de switches
-- `http://localhost:3000/vf/health` - Pour vérifier l'état du service
+
+Le serveur écoute par défaut sur le chemin de base `/vf`. Exemples d'URLs :
+- `http://localhost:3000/vf` - Interface web
+- `http://localhost:3000/vf/api/devices` - API des appareils
+- `http://localhost:3000/vf/switch/event` - Événements switches
+- `http://localhost:3000/vf/health` - Health check
 
 Vous pouvez modifier le chemin de base en définissant `HTTP_BASE_PATH` dans votre fichier `.env` :
 ```env
@@ -147,3 +170,17 @@ HTTP_BASE_PATH=/vf
 ```cpp
 #define HTTP_BASE_PATH "/vf"
 ```
+
+## Utilisation de l'interface web
+
+1. Démarrez le serveur : `npm start`
+2. Ouvrez votre navigateur à `http://localhost:3000/vf`
+3. **Enregistrez votre appareil** :
+   - Entrez le Device ID affiché par votre ESP32 (ex: `ESP32-AABBCCDDEEFF`)
+   - Entrez votre nom
+4. **Configurez vos mappings** :
+   - Sélectionnez votre appareil dans la liste
+   - Pour chaque switch (0, 1, 2), entrez :
+     - L'ID Discord de l'utilisateur propriétaire
+     - L'ID Discord de la personne cible
+5. **Testez** : Appuyez sur vos switches physiques !

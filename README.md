@@ -1,6 +1,13 @@
 # VF Discord Orchester
 
-Système complet pour contrôler les mouvements d'utilisateurs Discord entre salons vocaux via des switches physiques connectés à un ESP32.
+Système complet pour contrôler les mouvements d'utilisateurs Discord entre salons vocaux via des switches physiques connectés à un ESP32. **Supporte plusieurs utilisateurs avec leurs propres appareils !**
+
+## 🎯 Nouveautés - Multi-Utilisateurs
+
+- ✨ **Interface web** pour gérer vos appareils à `https://stamya.org/vf`
+- 👥 **Support multi-utilisateurs** : chaque personne peut avoir son propre ESP32
+- 🎮 **Configuration personnalisée** : chaque appareil a ses propres mappings Discord
+- 🔧 **Gestion facile** : enregistrez et configurez vos appareils via l'interface web
 
 ## Vue d'ensemble
 
@@ -9,21 +16,26 @@ Ce projet combine deux composants principaux :
 1. **Discord-relay** : Service Node.js hébergé sur VPS qui reçoit les événements HTTP et contrôle les mouvements Discord
 2. **MqttBotCommander** : Firmware ESP32 qui lit les switches physiques et envoie les événements via HTTP
 
-## Architecture
+## Architecture Multi-Utilisateurs
 
 ```
 ┌─────────────┐                       ┌──────────────┐
-│   ESP32     │       HTTPS           │ Discord-     │
-│   + 3       │  ──────────────────►  │ relay (VPS)  │
-│  Switches   │   /vf/switch/event    │ stamya.org   │
-└─────────────┘                       └──────┬───────┘
-                                             │
-                                             │ Discord API
-                                             │
-                                      ┌──────▼───────┐
-                                      │   Discord    │
-                                      │   Server     │
-                                      └──────────────┘
+│  ESP32 #1   │                       │              │
+│  (User A)   │──────┐                │              │
+└─────────────┘      │                │              │
+                     │    HTTPS       │  Discord-    │
+┌─────────────┐      ├──────────────► │  relay (VPS) │
+│  ESP32 #2   │──────┤ /vf/switch/    │  stamya.org  │──► Discord API
+│  (User B)   │      │      event     │              │
+└─────────────┘      │                │  Web UI at   │
+                     │                │  /vf         │
+┌─────────────┐      │                │              │
+│  ESP32 #3   │──────┘                │              │
+│  (User C)   │                       │              │
+└─────────────┘                       └──────────────┘
+         │                                    │
+         └────────────────────────────────────┘
+              Gestion via interface web
 ```
 
 ## Fonctionnalités
@@ -48,30 +60,43 @@ Maintenir **les 3 switches appuyés** pendant 5 secondes ou plus :
 - Ramène tout le monde au salon **"Office"**
 - Efface l'historique des mouvements
 
-## Installation Rapide
+## 🚀 Installation Rapide
 
-### Discord-relay (VPS)
+### Étape 1 : Discord-relay (VPS)
 
 ```bash
 cd Discord-relay
 npm install
 cp .env.example .env
-nano .env  # Configurez vos identifiants
-nano mappings.json  # Configurez vos mappings
+nano .env  # Configurez vos identifiants Discord
+cp devices.json.example devices.json
+nano devices.json  # Configurez les channels Discord
 npm start
 ```
 
+Le serveur démarre et l'interface web est accessible à : `http://localhost:3000/vf`
+
 Voir [Discord-relay/README.md](Discord-relay/README.md) pour plus de détails.
 
-### MqttBotCommander (ESP32)
+### Étape 2 : MqttBotCommander (ESP32)
 
 ```bash
 cd MqttBotCommander
-nano include/config.h  # Configurez WiFi et MQTT
+nano include/config.h  # Configurez WiFi et serveur HTTP
 pio run --target upload
 ```
 
+Au démarrage, l'ESP32 affichera son **Device ID** dans le moniteur série.
+
 Voir [MqttBotCommander/README.md](MqttBotCommander/README.md) pour plus de détails.
+
+### Étape 3 : Enregistrer votre appareil
+
+1. Notez le **Device ID** affiché par l'ESP32 (ex: `ESP32-AABBCCDDEEFF`)
+2. Allez sur `https://stamya.org/vf` (ou `http://localhost:3000/vf` en local)
+3. Enregistrez votre appareil avec votre nom
+4. Configurez les mappings Discord pour vos 3 switches
+5. Testez ! 🎉
 
 ## Déploiement Complet
 
@@ -97,23 +122,24 @@ Assurez-vous que :
 - L'ESP32 peut atteindre le VPS sur le port HTTP configuré (par défaut : 3000)
 - Le VPS écoute sur une adresse accessible depuis votre réseau local ou via Internet
 
-### Mappings
+### Configuration des Channels Discord
 
-Configurez les associations dans `Discord-relay/mappings.json` :
+Configurez les channels par défaut dans `Discord-relay/devices.json` :
 
 ```json
 {
-  "switches": [
-    {
-      "switchId": 0,
-      "userId": "DISCORD_USER_1_ID",
-      "targetUserId": "DISCORD_USER_2_ID"
-    }
-  ],
+  "devices": [],
   "officeChannelId": "OFFICE_VOICE_CHANNEL_ID",
   "directChannelId": "DIRECT_VOICE_CHANNEL_ID"
 }
 ```
+
+Les mappings par appareil se configurent ensuite via l'interface web à `https://stamya.org/vf`
+
+### Comment obtenir les IDs Discord
+
+1. **Channel IDs** : Activez le mode développeur dans Discord (Paramètres > Avancés), puis faites clic-droit sur un channel vocal et "Copier l'identifiant"
+2. **User IDs** : Même chose sur un utilisateur : clic-droit > "Copier l'identifiant"
 
 ## Matériel Requis
 

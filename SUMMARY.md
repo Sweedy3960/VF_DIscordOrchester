@@ -1,50 +1,69 @@
 # Implementation Summary
 
-## Project: Switch-Based Discord Voice Channel Control
+## Project: Multi-User Switch-Based Discord Voice Channel Control
 
-### Date: 2025-11-12
+### Last Updated: 2025-11-20
 
 ---
 
 ## Overview
 
-Successfully implemented a complete system for controlling Discord voice channel movements using 3 physical switches connected to an ESP32. The system replaces the previous keyword-based control with intuitive physical buttons.
+Successfully implemented a complete multi-user system for controlling Discord voice channel movements using physical switches connected to ESP32 devices. The system now supports multiple users, each with their own device and custom Discord mappings, all managed through a web interface.
 
 ## What Was Built
 
-### 1. Discord-relay (Node.js Service)
+### 1. Discord-relay (Node.js Service) - **UPDATED FOR MULTI-USER**
 
 **File**: `Discord-relay/src/index.js`
 
-**Key Changes**:
-- Replaced keyword event handling with switch event handling
-- Added state tracking for 3 switches (Map-based storage)
-- Implemented timer logic for detecting button press durations
-- Three operational modes:
+**New Multi-User Features**:
+- **Device management system**: Support for multiple ESP32 devices
+- **Per-device state tracking**: Each device has its own switch states and timers
+- **REST API endpoints**: Complete API for device and mapping management
+- **Web interface**: Static HTML/CSS/JS served at `/vf`
+- **Backward compatibility**: Automatic migration of legacy `mappings.json`
+
+**Three operational modes** (per device):
   - **Single switch press**: Moves switch owner + target to Direct channel
   - **All 3 switches < 5 sec**: Returns everyone to Office channel
   - **All 3 switches ≥ 5 sec**: Resets configuration and returns to Office
 
 **Configuration**:
-- `mappings.json`: New structure with switch-to-user mappings
-- `.env`: Added `ALL_SWITCHES_HOLD_TIME_MS` parameter
-- Updated MQTT topic to `switch/event` instead of `kws/event`
+- `devices.json`: New multi-device configuration with per-device mappings
+- `mappings.json`: Legacy format (auto-migrated)
+- `.env`: Added `DEVICES_FILE` parameter
 
 **Key Functions**:
-- `areAllSwitchesPressed()`: Checks if all 3 switches are active
-- `handleSingleSwitchPress()`: Moves users to Direct channel
-- `handleReturnToOffice()`: Returns all users to Office channel
-- `handleResetToDefault()`: Resets system state
+- `getDevice()`: Retrieves device configuration by ID
+- `getSwitchMapForDevice()`: Gets switch mappings for specific device
+- `areAllSwitchesPressed(deviceId)`: Checks switch states per device
+- `handleSingleSwitchPress(deviceId, switchId)`: Per-device switch handling
+- `handleReturnToOffice(deviceId)`: Per-device return to office
+- `handleResetToDefault(deviceId)`: Per-device reset
+- `saveDevicesConfig()`: Persists device configuration
 
-### 2. MqttBotCommander (ESP32 Firmware)
+**API Endpoints**:
+- `GET /vf` - Web interface
+- `GET /vf/health` - Health check
+- `GET /vf/api/devices` - List all devices
+- `POST /vf/api/devices` - Register new device
+- `DELETE /vf/api/devices/{id}` - Delete device
+- `GET /vf/api/devices/{id}/mappings` - Get device mappings
+- `PUT /vf/api/devices/{id}/mappings` - Update device mappings
+- `POST /vf/switch/event` - Process switch events (with deviceId)
+
+### 2. MqttBotCommander (ESP32 Firmware) - **UPDATED WITH DEVICE ID**
 
 **File**: `MqttBotCommander/src/main.cpp`
 
-**Features**:
+**New Features**:
+- **Unique Device ID generation**: Auto-generated from MAC address
+- **Custom Device ID support**: Optional custom identifier
+- **Device ID display**: Shows ID and registration URL on startup
 - Arduino-based firmware for ESP32
 - 3 GPIO inputs with internal pull-up resistors
 - Debouncing logic (50ms delay)
-- MQTT client for publishing events
+- HTTP client for sending events
 - WiFi connection with auto-reconnect
 - JSON message formatting
 - Serial debugging output
@@ -55,63 +74,112 @@ Successfully implemented a complete system for controlling Discord voice channel
 - GPIO 27: Switch 2
 - Active LOW switches (pressed = LOW, released = HIGH)
 
-**MQTT Payload Format**:
+**HTTP Payload Format** (Updated):
 ```json
 {
+  "deviceId": "ESP32-A4CF12FE8D9C",
   "switchId": 0,
   "state": 1,
   "timestamp": 12345678
 }
 ```
 
-### 3. Documentation
+**Startup Output**:
+```
+Generated device ID: ESP32-A4CF12FE8D9C
+...
+===================================
+IMPORTANT: Register this device at:
+  https://stamya.org/vf
+===================================
+```
 
-Created comprehensive documentation:
+### 3. Web Interface (NEW)
 
-#### DEPLOYMENT.md (14,781 characters)
-Complete deployment and update procedures covering:
-- **VPS Setup**:
-  - Initial installation steps
-  - systemd service configuration
-  - Step-by-step update procedure
-  - Troubleshooting guide
-  
-- **ESP32 Setup**:
-  - PlatformIO installation and usage
-  - Arduino IDE alternative
-  - Hardware wiring diagrams
-  - Firmware update procedures (USB and OTA)
-  - Comprehensive troubleshooting
+**File**: `Discord-relay/public/index.html`
 
-- **Checklists**:
-  - Initial configuration checklist
-  - Functional testing checklist
+**Features**:
+- **Responsive design**: Works on desktop and mobile
+- **Device registration**: Form to register new ESP32 devices
+- **Device listing**: View all registered devices with their mappings
+- **Mapping configuration**: Per-device switch mapping editor
+- **Real-time updates**: Immediate feedback on actions
+- **Error handling**: User-friendly error messages
+- **Professional UI**: Modern gradient design with Discord branding
 
-#### README.md Files
-- **Main README**: Architecture overview, quick start, project structure
-- **Discord-relay README**: Service description, configuration, usage
-- **MqttBotCommander README**: Firmware description, hardware setup, flashing
+**Sections**:
+1. **Register Your Device**: Quick registration form
+2. **Configure Switch Mappings**: Per-device mapping editor
+3. **Registered Devices**: List of all devices with delete option
+
+### 4. Documentation - **EXTENSIVELY UPDATED**
+
+Created and updated comprehensive documentation:
+
+#### NEW: MULTI_USER_GUIDE.md
+Complete guide for multi-user setup covering:
+- Architecture overview
+- Quick start for new users
+- Getting Discord IDs
+- Web interface features
+- REST API examples
+- Device ID system
+- Multiple devices setup scenarios
+- Troubleshooting
+- Data storage and backup
+- Migration from legacy system
+- Best practices
+- Advanced usage
+
+#### NEW: Discord-relay/API.md
+Complete REST API documentation:
+- All endpoint specifications
+- Request/response examples
+- Error handling
+- CORS configuration
+- Testing workflow with curl examples
+
+#### UPDATED: DEPLOYMENT.md
+Enhanced with multi-user instructions:
+- Device management procedures
+- Web interface deployment
+- Multiple user scenarios
+
+#### UPDATED: README.md Files
+- **Main README**: Multi-user architecture, new quick start
+- **Discord-relay README**: API endpoints, web interface usage, migration guide
+- **MqttBotCommander README**: Device ID generation, registration instructions
 
 ## Configuration Files
 
-### Discord-relay/mappings.json
+### NEW: Discord-relay/devices.json
+Multi-device configuration with per-device mappings:
 ```json
 {
-  "switches": [
+  "devices": [
     {
-      "switchId": 0,
-      "userId": "USER_1_DISCORD_ID",
-      "targetUserId": "USER_2_DISCORD_ID"
+      "deviceId": "ESP32-AABBCCDDEEFF",
+      "ownerName": "User A",
+      "mappings": {
+        "switches": [
+          {
+            "switchId": 0,
+            "userId": "USER_1_DISCORD_ID",
+            "targetUserId": "USER_2_DISCORD_ID"
+          }
+        ],
+        "officeChannelId": "OFFICE_VOICE_CHANNEL_ID",
+        "directChannelId": "DIRECT_VOICE_CHANNEL_ID"
+      }
     },
     {
-      "switchId": 1,
-      "userId": "USER_2_DISCORD_ID",
-      "targetUserId": "USER_3_DISCORD_ID"
-    },
-    {
-      "switchId": 2,
-      "userId": "USER_3_DISCORD_ID",
-      "targetUserId": "USER_1_DISCORD_ID"
+      "deviceId": "ESP32-112233445566",
+      "ownerName": "User B",
+      "mappings": {
+        "switches": [...],
+        "officeChannelId": "OFFICE_VOICE_CHANNEL_ID",
+        "directChannelId": "DIRECT_VOICE_CHANNEL_ID"
+      }
     }
   ],
   "officeChannelId": "OFFICE_VOICE_CHANNEL_ID",
@@ -119,32 +187,39 @@ Complete deployment and update procedures covering:
 }
 ```
 
-### MqttBotCommander/include/config.h
+### Discord-relay/mappings.json (LEGACY)
+Automatically migrated to devices.json on first startup.
+Kept for backward compatibility.
+
+### UPDATED: MqttBotCommander/include/config.h
 - WiFi credentials (SSID, password)
-- MQTT broker configuration (server, port, credentials)
-- Device identifiers (enterprise ID, device ID)
+- HTTP server configuration (server, base path, endpoint)
+- **NEW**: Custom Device ID option
 - GPIO pin assignments
 - Timing parameters (debounce delay, reconnect delays)
 
 ## Security Review
 
-### Vulnerabilities Checked
-✅ **npm dependencies**: No vulnerabilities found
+### Vulnerabilities Fixed
+✅ **npm dependencies**: 0 vulnerabilities (Updated 2025-11-20)
 - dotenv 16.4.5
-- mqtt 5.3.5
-- pino 9.3.1
-- undici 6.19.8
+- pino 9.14.0 (updated from 9.3.1 - fixed fast-redact vulnerability)
+- undici 6.22.0 (updated from 6.19.8 - fixed DoS and random value vulnerabilities)
 
 ✅ **CodeQL Analysis**: 0 alerts found
 - JavaScript code analysis passed
-- No security issues detected
+- No security issues detected in new multi-user code
 
 ### Security Best Practices Implemented
 - `.env` files excluded from git (via .gitignore)
+- `devices.json` and `mappings.json` excluded from git (via .gitignore)
 - Configuration templates provided without real credentials
 - Documentation emphasizes not committing secrets
-- MQTTS (TLS) recommended for MQTT connections
+- HTTPS recommended for production
 - Bot permissions limited to "Move Members" only
+- CORS enabled for API endpoints
+- Device ID validation on all endpoints
+- JSON validation on all inputs
 
 ## Testing Performed
 
@@ -273,14 +348,35 @@ Consult the comprehensive troubleshooting sections in:
 
 ## Conclusion
 
-The implementation is complete and ready for deployment. All requirements have been met:
+The implementation is complete and ready for deployment. All requirements have been met and exceeded:
 
+### Original Requirements (Maintained)
 ✅ Switch-based control (not keyword-based)
 ✅ Three operational modes with proper timing
 ✅ Pulse detection (press/release, not toggle)
 ✅ Complete documentation including deployment procedures
 ✅ Security review passed
 ✅ No vulnerabilities found
-✅ Ready for production use
 
-The system provides an intuitive physical interface for Discord voice channel management, improving team communication workflows.
+### NEW: Multi-User Requirements (Implemented)
+✅ Multiple users can register their own ESP32 devices
+✅ Each device has a unique identifier (auto-generated or custom)
+✅ Web interface for easy device registration and management
+✅ Per-device custom Discord mappings
+✅ REST API for programmatic device management
+✅ Backward compatibility with legacy single-device setup
+✅ Automatic migration of existing configurations
+✅ Comprehensive multi-user documentation and guides
+
+### Production Ready
+✅ All API endpoints tested and working
+✅ Web interface functional and responsive
+✅ ESP32 firmware includes device identification
+✅ Zero npm vulnerabilities
+✅ Zero CodeQL security alerts
+✅ Comprehensive error handling
+✅ Data persistence with backup/restore capability
+✅ CORS enabled for web interface
+✅ Multiple devices tested successfully
+
+The system now provides a scalable, multi-user platform for Discord voice channel management, allowing teams to grow and add new members with their own devices easily through the web interface.
