@@ -193,9 +193,35 @@ pm2 restart discord-relay
 **Causes communes** :
 - Fichier `.env` manquant ou mal configuré
 - Variables d'environnement manquantes (APP_ID, BOT_TOKEN, GUILD_ID)
-- Répertoire `logs/` manquant (créé automatiquement maintenant)
+- Problèmes de permissions (résolu automatiquement avec fallback vers les logs PM2)
 
 Pour plus de détails, consultez le [Guide de Dépannage Complet](./TROUBLESHOOTING.md).
+
+### Erreur "EACCES: permission denied" pour les logs
+
+Si vous voyez une erreur de permission sur les fichiers de logs :
+
+```
+[Error: EACCES: permission denied, open '/opt/VF_DIscordOrchester/Discord-relay/logs/combined.log']
+```
+
+**Solution automatique** : La configuration PM2 détecte maintenant automatiquement les problèmes de permissions et utilise les logs par défaut de PM2 (`~/.pm2/logs/`). Aucune action n'est requise.
+
+**Pour activer les logs personnalisés** (optionnel) :
+```bash
+# Créer le répertoire logs avec les bonnes permissions
+cd /opt/VF_DIscordOrchester/Discord-relay
+mkdir -p logs
+chmod 755 logs
+
+# Si vous utilisez un utilisateur différent pour PM2
+sudo chown -R $USER:$USER logs
+
+# Redémarrer PM2
+pm2 restart discord-relay
+```
+
+**Note** : Les logs sont accessibles avec `pm2 logs discord-relay` quelle que soit leur localisation.
 
 ### Erreur "File ecosystem.config.js not found"
 
