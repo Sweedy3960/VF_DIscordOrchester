@@ -7,6 +7,15 @@
 //   pm2 start ecosystem.config.cjs
 //   pm2 start                   (uses ecosystem.config.js wrapper)
 
+const fs = require('fs');
+const path = require('path');
+
+// Ensure logs directory exists
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir);
+}
+
 module.exports = {
   apps: [{
     name: 'discord-relay',

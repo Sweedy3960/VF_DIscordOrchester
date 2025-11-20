@@ -76,6 +76,16 @@ Configurez les channels Discord par défaut :
 
 Si vous aviez un fichier `mappings.json` de l'ancienne version, il sera automatiquement migré vers `devices.json` en créant un appareil "LEGACY-DEVICE" au premier démarrage.
 
+## Configuration Validation
+
+Before starting the application, validate your configuration:
+
+```bash
+npm run validate
+```
+
+This will check if your `.env` file and other required configuration files are set up correctly.
+
 ## Exécution
 
 ### Exécution locale (développement)
@@ -96,7 +106,10 @@ PM2 permet de gérer l'application comme un service avec redémarrage automatiqu
 # Installation de PM2 (une seule fois)
 npm install -g pm2
 
-# Démarrer l'application
+# IMPORTANT: Valider la configuration avant de démarrer
+npm run validate
+
+# Démarrer l'application (includes validation)
 npm run pm2:start
 
 # Voir les logs en temps réel
@@ -109,7 +122,9 @@ npm run pm2:restart
 npm run pm2:stop
 ```
 
-Pour plus de détails sur PM2, consultez [DEPLOYMENT.md](./DEPLOYMENT.md).
+**Note importante**: Si PM2 montre que l'application est en statut "errored" ou redémarre constamment, consultez le [Guide de Dépannage](./TROUBLESHOOTING.md#pm2-application-constantly-restarting).
+
+Pour plus de détails sur PM2, consultez [PM2.md](./PM2.md) et [DEPLOYMENT.md](../DEPLOYMENT.md).
 
 ### Déploiement sur VPS (production)
 
