@@ -2,12 +2,20 @@
 
 Firmware ESP32 qui lit l'état de 3 switches physiques et envoie les événements via HTTP au serveur Discord-relay.
 
+## 🎯 Nouveautés - Device ID Unique
+
+- **Identification automatique** : Chaque ESP32 génère un Device ID unique basé sur son adresse MAC
+- **Multi-utilisateurs** : Plusieurs ESP32 peuvent coexister sur le même serveur
+- **Configuration personnalisée** : Chaque appareil a ses propres mappings Discord via l'interface web
+
 ## Description
 
 Ce firmware permet de contrôler les mouvements Discord via 3 switches physiques :
 - **Switch unique** : Appuyer sur un switch déplace l'utilisateur et sa cible vers le salon Direct
 - **3 switches < 5 sec** : Appuyer sur les 3 switches ensemble puis relâcher avant 5 secondes ramène tout le monde au salon Office
 - **3 switches ≥ 5 sec** : Maintenir les 3 switches pendant 5+ secondes réinitialise la configuration
+
+**Nouveau** : Chaque appareil s'identifie avec un Device ID unique et peut avoir sa propre configuration !
 
 ## Matériel requis
 
@@ -30,7 +38,7 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 
 ## Configuration
 
-1. Copiez `include/config.h` et modifiez les paramètres :
+1. Modifiez `include/config.h` avec vos paramètres :
 
 ```cpp
 // WiFi
@@ -41,10 +49,25 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 #define HTTP_SERVER "stamya.org"  // Adresse de votre serveur Discord-relay
 #define HTTP_BASE_PATH "/vf"  // Chemin de base pour l'API
 
+// Device ID (optionnel - laissez vide pour auto-génération)
+#define CUSTOM_DEVICE_ID ""  // Ex: "MonESP32-Bureau" ou laissez ""
+
 // GPIO Pins (modifier si nécessaire)
 #define SWITCH_0_PIN 25
 #define SWITCH_1_PIN 26
 #define SWITCH_2_PIN 27
+```
+
+### Device ID
+
+**Auto-génération (recommandé)** : Laissez `CUSTOM_DEVICE_ID` vide (`""`). Le Device ID sera généré automatiquement à partir de l'adresse MAC de l'ESP32.
+- Format : `ESP32-AABBCCDDEEFF`
+- Exemple : `ESP32-A4CF12FE8D9C`
+- Unique pour chaque ESP32
+
+**Device ID personnalisé** : Si vous préférez un nom personnalisé, définissez-le :
+```cpp
+#define CUSTOM_DEVICE_ID "MonESP32-Bureau"
 ```
 
 ## Installation avec PlatformIO
@@ -77,6 +100,21 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
    ```bash
    pio device monitor
    ```
+
+6. **Important** : Notez le **Device ID** affiché au démarrage :
+   ```
+   Generated device ID: ESP32-A4CF12FE8D9C
+   
+   ===================================
+   IMPORTANT: Register this device at:
+     https://stamya.org/vf
+   ===================================
+   ```
+
+7. **Enregistrez votre appareil** :
+   - Allez sur `https://stamya.org/vf`
+   - Entrez le Device ID et votre nom
+   - Configurez vos mappings Discord
 
 ## Installation avec Arduino IDE
 
@@ -116,12 +154,14 @@ Exemple: `https://stamya.org/vf/switch/event`
 Format du payload JSON :
 ```json
 {
+  "deviceId": "ESP32-A4CF12FE8D9C",
   "switchId": 0,
   "state": 1,
   "timestamp": 12345678
 }
 ```
 
+- `deviceId` : Identifiant unique de l'appareil (nouveau !)
 - `switchId` : Identifiant du switch (0, 1 ou 2)
 - `state` : État du switch (1 = appuyé, 0 = relâché)
 - `timestamp` : Timestamp en millisecondes depuis le démarrage de l'ESP32
@@ -147,6 +187,7 @@ Format du payload JSON :
 
 ### Événements non reçus par le Discord-relay
 - Vérifiez que l'URL HTTP est correcte (HTTP_SERVER et HTTP_PORT)
+- **Vérifiez que le Device ID est enregistré sur le serveur** via l'interface web
 - Vérifiez que le format JSON est correct dans les logs
 - Assurez-vous que le Discord-relay est en cours d'exécution
 - Vérifiez que le firewall n'empêche pas la communication
@@ -154,12 +195,37 @@ Format du payload JSON :
 ## Moniteur série
 
 Le moniteur série affiche :
+- **Device ID généré** (important pour l'enregistrement !)
 - État de connexion WiFi (IP, force du signal)
 - Configuration de l'endpoint HTTP
+- Lien vers l'interface web d'enregistrement
 - Événements de switches (appui/relâchement)
 - Codes de réponse HTTP et messages envoyés
 
 Vitesse du moniteur série : **115200 baud**
+
+Exemple de sortie :
+```
+=================================
+ESP32 Switch Controller Starting
+=================================
+
+Generated device ID: ESP32-A4CF12FE8D9C
+Connecting to WiFi: MonWiFi
+...
+WiFi connected!
+IP address: 192.168.1.100
+
+HTTP endpoint: https://stamya.org/vf/switch/event
+Device ID: ESP32-A4CF12FE8D9C
+
+===================================
+IMPORTANT: Register this device at:
+  https://stamya.org/vf
+===================================
+
+Setup complete! Monitoring switches...
+```
 
 ## Mise à jour du firmware
 
