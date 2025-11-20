@@ -107,6 +107,7 @@ module.exports = {
     name: 'discord-relay',              // Nom de l'application
     script: './src/index.js',           // Point d'entrée
     instances: 1,                       // Nombre d'instances
+    exec_mode: 'fork',                  // Mode fork (requis pour ES modules)
     autorestart: true,                  // Redémarrage auto si crash
     watch: false,                       // Pas de rechargement auto sur changements
     max_memory_restart: '500M',         // Redémarrage si > 500MB
@@ -121,6 +122,8 @@ module.exports = {
 ```
 
 **Note**: Le fichier `.cjs` est nécessaire car ce projet utilise ES modules (`"type": "module"` dans package.json). Le fichier `.js` est un wrapper qui permet à PM2 de trouver la configuration automatiquement.
+
+**Important**: L'application utilise `exec_mode: 'fork'` au lieu du mode cluster par défaut. Ceci est essentiel pour le bon fonctionnement des ES modules avec PM2. Sans cette configuration, l'application peut redémarrer constamment avec l'erreur "too many unstable restarts".
 
 ## Déploiement sur VPS
 

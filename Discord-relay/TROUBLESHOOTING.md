@@ -26,10 +26,30 @@ This guide helps you diagnose and fix common issues with the discord-relay appli
 
 The application shows a high restart count (↺) and status is "errored" or keeps cycling between "online" and "errored".
 
-### Root Cause
-The most common cause is missing or invalid environment variables in the `.env` file. The application exits with error code 1 when it cannot find required configuration.
+### Root Causes
+The application may restart constantly due to one or more of these issues:
+
+1. **Cluster Mode Incompatibility**: PM2 running in cluster mode instead of fork mode (causes immediate crashes with SIGINT)
+2. **Missing Environment Variables**: The `.env` file is missing or invalid
+3. **Permission Issues**: Log files cannot be written
 
 ### Solution
+
+#### If you see "cluster mode" in the logs:
+If PM2 logs show `App [discord-relay:X] starting in -cluster mode-`, this is the issue. The application requires fork mode for ES modules.
+
+**Fix**: Update to the latest version or manually set `exec_mode: 'fork'` in `ecosystem.config.cjs`:
+```bash
+cd /opt/VF_DIscordOrchester
+git pull origin main
+cd Discord-relay
+pm2 delete discord-relay
+npm run pm2:start
+```
+
+If you can't update, manually add `exec_mode: 'fork',` after the `instances: 1,` line in `ecosystem.config.cjs`, then restart PM2.
+
+#### Otherwise, check environment variables:
 
 #### Step 1: Check PM2 logs
 ```bash
