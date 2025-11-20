@@ -21,3 +21,7 @@ pids/
 
 # OS files
 .DS_Store
+
+# Runtime data files (user devices and mappings)
+devices.json
+mappings.json

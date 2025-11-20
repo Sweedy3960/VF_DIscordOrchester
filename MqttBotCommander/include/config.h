@@ -11,6 +11,12 @@
 #define HTTP_BASE_PATH "/vf"
 #define HTTP_ENDPOINT "https://" HTTP_SERVER HTTP_BASE_PATH "/switch/event"
 
+// Device Configuration
+// This will be auto-generated based on ESP32 MAC address
+// Format: ESP32-AABBCCDDEE
+// Leave empty to auto-generate, or set a custom device ID
+#define CUSTOM_DEVICE_ID ""
+
 // Helper macro for stringification
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)

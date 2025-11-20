@@ -7,6 +7,9 @@
 // WiFi client
 WiFiClient espClient;
 
+// Device ID (generated from MAC address or custom)
+String deviceId;
+
 // Switch state tracking
 struct SwitchState {
   int pin;
@@ -27,6 +30,7 @@ void reconnectWiFi();
 void checkSwitches();
 void sendSwitchEvent(int switchId, int state);
 void setupSwitches();
+void generateDeviceId();
 
 void setup() {
   Serial.begin(115200);
@@ -36,6 +40,9 @@ void setup() {
   Serial.println("ESP32 Switch Controller Starting");
   Serial.println("=================================\n");
   
+  // Generate unique device ID
+  generateDeviceId();
+  
   // Setup switches with internal pull-up resistors
   setupSwitches();
   
@@ -43,6 +50,11 @@ void setup() {
   setupWiFi();
   
   Serial.printf("HTTP endpoint: %s\n", HTTP_ENDPOINT);
+  Serial.printf("Device ID: %s\n", deviceId.c_str());
+  Serial.println("\n===================================");
+  Serial.println("IMPORTANT: Register this device at:");
+  Serial.printf("  https://%s%s\n", HTTP_SERVER, HTTP_BASE_PATH);
+  Serial.println("===================================\n");
   Serial.println("\nSetup complete! Monitoring switches...\n");
 }
 
@@ -140,6 +152,26 @@ void checkSwitches() {
   }
 }
 
+void generateDeviceId() {
+  // Check if custom device ID is set
+  String customId = String(CUSTOM_DEVICE_ID);
+  if (customId.length() > 0) {
+    deviceId = customId;
+    Serial.printf("Using custom device ID: %s\n", deviceId.c_str());
+    return;
+  }
+  
+  // Generate device ID from MAC address
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  
+  char macStr[13];
+  sprintf(macStr, "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  
+  deviceId = "ESP32-" + String(macStr);
+  Serial.printf("Generated device ID: %s\n", deviceId.c_str());
+}
+
 void sendSwitchEvent(int switchId, int state) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Cannot send: WiFi not connected");
@@ -149,7 +181,8 @@ void sendSwitchEvent(int switchId, int state) {
   HTTPClient http;
   
   // Create JSON document
-  StaticJsonDocument<200> doc;
+  StaticJsonDocument<256> doc;
+  doc["deviceId"] = deviceId;
   doc["switchId"] = switchId;
   doc["state"] = state;
   doc["timestamp"] = millis();
