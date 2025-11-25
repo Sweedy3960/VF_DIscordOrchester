@@ -7,6 +7,7 @@ This guide helps you diagnose and fix common issues with the discord-relay appli
 - [PM2 Application Constantly Restarting](#pm2-application-constantly-restarting)
 - [Application Exits with Error Code 1](#application-exits-with-error-code-1)
 - [Log Permission Errors (EACCES)](#log-permission-errors-eacces)
+- [Environment File Permission Errors (EACCES on .env)](#environment-file-permission-errors-eacces-on-env)
 - [Missing Environment Variables](#missing-environment-variables)
 - [Port Already in Use](#port-already-in-use)
 - [Discord API Errors](#discord-api-errors)
@@ -215,6 +216,76 @@ pm2 status
 
 # View logs
 pm2 logs discord-relay --lines 50
+```
+
+---
+
+## Environment File Permission Errors (EACCES on .env)
+
+### Symptoms
+```
+Error: EACCES: permission denied, open '/opt/VF_DIscordOrchester/Discord-relay/.env'
+    at Object.openSync (node:fs:596:3)
+    at Object.readFileSync (node:fs:464:35)
+    at file:///opt/VF_DIscordOrchester/Discord-relay/validate-config.js:32:25
+```
+
+The validation script fails with permission denied when trying to read the `.env` file during `npm run pm2:start`.
+
+### Root Cause
+The current user doesn't have read permission on the `.env` file. This commonly happens when:
+- The `.env` file was created by a different user (e.g., root)
+- File permissions are too restrictive (e.g., 600 instead of 644)
+- The project directory is owned by a different user
+
+### Solution (Automatic)
+
+**Good news**: The latest version of the validation script automatically handles this issue!
+
+The script now:
+1. Detects when it cannot read the `.env` file due to permissions
+2. Displays a warning message
+3. Allows PM2 to proceed (PM2 might have different permissions)
+4. Skips environment variable validation
+
+**If you see a permission warning during validation, PM2 will still attempt to start the application.** If PM2 also fails to read the `.env` file, it will fail to start and you'll need to fix the permissions.
+
+### Solution (Manual - Fix Permissions)
+
+If PM2 also fails to start due to `.env` permissions:
+
+```bash
+cd /opt/VF_DIscordOrchester/Discord-relay
+
+# Option 1: Make the file readable by everyone (recommended)
+chmod 644 .env
+
+# Option 2: Change ownership to your user
+sudo chown $USER:$USER .env
+
+# Option 3: Change ownership of the entire project
+sudo chown -R $USER:$USER /opt/VF_DIscordOrchester
+```
+
+**Security Note**: The `.env` file contains sensitive credentials (bot token). While making it readable (644) is generally safe on a properly secured server, ensure:
+- The file is NOT writable by others (no 666 or 777 permissions)
+- The file is NOT committed to git (it's in .gitignore)
+- Only trusted users have access to the server
+
+### Verification
+
+After fixing permissions:
+```bash
+# Verify permissions
+ls -la .env
+# Should show: -rw-r--r-- (644) or -rw------- (600)
+
+# Test validation
+npm run validate
+# Should pass without permission warnings
+
+# Start PM2
+npm run pm2:start
 ```
 
 ---

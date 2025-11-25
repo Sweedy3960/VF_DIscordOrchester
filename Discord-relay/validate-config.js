@@ -29,24 +29,36 @@ if (!fs.existsSync(envPath)) {
   console.log('✅ .env file exists');
   
   // Load and check required environment variables
-  const envContent = fs.readFileSync(envPath, 'utf-8');
-  const requiredVars = ['APP_ID', 'BOT_TOKEN', 'GUILD_ID'];
-  const missing = [];
-  
-  for (const varName of requiredVars) {
-    const regex = new RegExp(`^${varName}=.+$`, 'm');
-    const match = envContent.match(regex);
-    if (!match || match[0].includes('your_') || match[0].includes('_here')) {
-      missing.push(varName);
+  try {
+    const envContent = fs.readFileSync(envPath, 'utf-8');
+    const requiredVars = ['APP_ID', 'BOT_TOKEN', 'GUILD_ID'];
+    const missing = [];
+    
+    for (const varName of requiredVars) {
+      const regex = new RegExp(`^${varName}=.+$`, 'm');
+      const match = envContent.match(regex);
+      if (!match || match[0].includes('your_') || match[0].includes('_here')) {
+        missing.push(varName);
+      }
     }
-  }
-  
-  if (missing.length > 0) {
-    console.error(`❌ ERROR: Missing or invalid values in .env file for: ${missing.join(', ')}`);
-    console.error('   → Edit .env and set valid values for these variables\n');
-    hasErrors = true;
-  } else {
-    console.log('✅ Required environment variables are configured');
+    
+    if (missing.length > 0) {
+      console.error(`❌ ERROR: Missing or invalid values in .env file for: ${missing.join(', ')}`);
+      console.error('   → Edit .env and set valid values for these variables\n');
+      hasErrors = true;
+    } else {
+      console.log('✅ Required environment variables are configured');
+    }
+  } catch (err) {
+    if (err.code === 'EACCES') {
+      console.log('⚠️  WARNING: Cannot read .env file due to permissions');
+      console.log('   → PM2 will attempt to read the file with its own permissions');
+      console.log('   → If PM2 fails to start, check file permissions: chmod 644 .env');
+      console.log('   → Skipping environment variable validation\n');
+    } else {
+      console.error(`❌ ERROR: Failed to read .env file: ${err.message}\n`);
+      hasErrors = true;
+    }
   }
 }
 
