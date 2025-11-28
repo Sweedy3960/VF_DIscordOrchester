@@ -12,8 +12,8 @@
 #define HTTP_ENDPOINT "https://" HTTP_SERVER HTTP_BASE_PATH "/switch/event"
 
 // Device Configuration
-// This will be auto-generated based on ESP32 MAC address
-// Format: ESP32-AABBCCDDEE
+// This will be auto-generated based on ESP32-C6 MAC address
+// Format: ESP32-C6-AABBCCDDEEFF
 // Leave empty to auto-generate, or set a custom device ID
 #define CUSTOM_DEVICE_ID ""
 
@@ -22,9 +22,11 @@
 #define STR(x) STR_HELPER(x)
 
 // GPIO Pin Configuration for Switches
-#define SWITCH_0_PIN 25
-#define SWITCH_1_PIN 26
-#define SWITCH_2_PIN 27
+// XIAO ESP32-C6 Pin Mapping:
+// D0 = GPIO0, D1 = GPIO1, D2 = GPIO2
+#define SWITCH_0_PIN 0
+#define SWITCH_1_PIN 1
+#define SWITCH_2_PIN 2
 
 // Debounce Configuration (milliseconds)
 #define DEBOUNCE_DELAY 50

@@ -5,7 +5,7 @@ Système complet pour contrôler les mouvements d'utilisateurs Discord entre sal
 ## 🎯 Nouveautés - Multi-Utilisateurs
 
 - ✨ **Interface web** pour gérer vos appareils à `https://stamya.org/vf`
-- 👥 **Support multi-utilisateurs** : chaque personne peut avoir son propre ESP32
+- 👥 **Support multi-utilisateurs** : chaque personne peut avoir son propre XIAO ESP32-C6
 - 🎮 **Configuration personnalisée** : chaque appareil a ses propres mappings Discord
 - 🔧 **Gestion facile** : enregistrez et configurez vos appareils via l'interface web
 
@@ -14,23 +14,23 @@ Système complet pour contrôler les mouvements d'utilisateurs Discord entre sal
 Ce projet combine deux composants principaux :
 
 1. **Discord-relay** : Service Node.js hébergé sur VPS qui reçoit les événements HTTP et contrôle les mouvements Discord
-2. **MqttBotCommander** : Firmware ESP32 qui lit les switches physiques et envoie les événements via HTTP
+2. **MqttBotCommander** : Firmware ESP32-C6 (XIAO) qui lit les switches physiques et envoie les événements via HTTP
 
 ## Architecture Multi-Utilisateurs
 
 ```
 ┌─────────────┐                       ┌──────────────┐
-│  ESP32 #1   │                       │              │
+│XIAO ESP32-C6│                       │              │
 │  (User A)   │──────┐                │              │
 └─────────────┘      │                │              │
                      │    HTTPS       │  Discord-    │
 ┌─────────────┐      ├──────────────► │  relay (VPS) │
-│  ESP32 #2   │──────┤ /vf/switch/    │  stamya.org  │──► Discord API
+│XIAO ESP32-C6│──────┤ /vf/switch/    │  stamya.org  │──► Discord API
 │  (User B)   │      │      event     │              │
 └─────────────┘      │                │  Web UI at   │
                      │                │  /vf         │
 ┌─────────────┐      │                │              │
-│  ESP32 #3   │──────┘                │              │
+│XIAO ESP32-C6│──────┘                │              │
 │  (User C)   │                       │              │
 └─────────────┘                       └──────────────┘
          │                                    │
@@ -78,7 +78,7 @@ Le serveur démarre et l'interface web est accessible à : `http://localhost:300
 
 Voir [Discord-relay/README.md](Discord-relay/README.md) pour plus de détails.
 
-### Étape 2 : MqttBotCommander (ESP32)
+### Étape 2 : MqttBotCommander (XIAO ESP32-C6)
 
 ```bash
 cd MqttBotCommander
@@ -86,13 +86,13 @@ nano include/config.h  # Configurez WiFi et serveur HTTP
 pio run --target upload
 ```
 
-Au démarrage, l'ESP32 affichera son **Device ID** dans le moniteur série.
+Au démarrage, l'ESP32-C6 affichera son **Device ID** dans le moniteur série.
 
 Voir [MqttBotCommander/README.md](MqttBotCommander/README.md) pour plus de détails.
 
 ### Étape 3 : Enregistrer votre appareil
 
-1. Notez le **Device ID** affiché par l'ESP32 (ex: `ESP32-AABBCCDDEEFF`)
+1. Notez le **Device ID** affiché par l'ESP32-C6 (ex: `ESP32-C6-AABBCCDDEEFF`)
 2. Allez sur `https://stamya.org/vf` (ou `http://localhost:3000/vf` en local)
 3. Enregistrez votre appareil avec votre nom
 4. Configurez les mappings Discord pour vos 3 switches
@@ -119,7 +119,7 @@ Créez un bot Discord avec :
 ### Network Configuration
 
 Assurez-vous que :
-- L'ESP32 peut atteindre le VPS sur le port HTTP configuré (par défaut : 3000)
+- L'ESP32-C6 peut atteindre le VPS sur le port HTTP configuré (par défaut : 3000)
 - Le VPS écoute sur une adresse accessible depuis votre réseau local ou via Internet
 
 ### Configuration des Channels Discord
@@ -143,22 +143,22 @@ Les mappings par appareil se configurent ensuite via l'interface web à `https:/
 
 ## Matériel Requis
 
-- **ESP32 DevKit** ou compatible
+- **XIAO ESP32-C6** (Seeed Studio)
 - **3 boutons poussoirs** (normalement ouverts)
-- **Câble USB** pour programmer l'ESP32
+- **Câble USB** pour programmer l'ESP32-C6
 - **Fils de connexion**
 - *(Optionnel)* Boîtier pour assembler les switches
 
 ## Schéma de Câblage
 
 ```
-ESP32          Bouton       GND
-GPIO 25 -----> Switch 0 --> GND
-GPIO 26 -----> Switch 1 --> GND
-GPIO 27 -----> Switch 2 --> GND
+XIAO ESP32-C6     Bouton       GND
+D0 (GPIO 0) ----> Switch 0 --> GND
+D1 (GPIO 1) ----> Switch 1 --> GND
+D2 (GPIO 2) ----> Switch 2 --> GND
 ```
 
-Les switches utilisent les résistances pull-up internes de l'ESP32.
+Les switches utilisent les résistances pull-up internes de l'ESP32-C6.
 
 ## Structure du Projet
 
@@ -192,10 +192,10 @@ VF_DIscordOrchester/
 - **Undici** - HTTP client pour Discord API
 
 ### MqttBotCommander
-- **Arduino Framework** pour ESP32
-- **HTTPClient** - Client HTTP pour ESP32
-- **ArduinoJson** - Sérialisation JSON
-- **PlatformIO** ou **Arduino IDE**
+- **ESP-IDF** for ESP32-C6
+- **FreeRTOS** - Native task management
+- **ESP HTTP Client** - Client HTTP natif pour ESP32-C6
+- **PlatformIO** pour compilation
 
 ## Dépannage
 
@@ -204,10 +204,10 @@ VF_DIscordOrchester/
 - Vérifiez que le port HTTP n'est pas déjà utilisé
 - Consultez les logs : `sudo journalctl -u discord-relay -f`
 
-### ESP32 n'envoie pas d'événements
+### ESP32-C6 n'envoie pas d'événements
 - Vérifiez la connexion WiFi
 - Vérifiez l'adresse HTTP_SERVER dans `config.h` pointe vers le VPS
-- Vérifiez que le port 3000 est accessible depuis l'ESP32
+- Vérifiez que le port 3000 est accessible depuis l'ESP32-C6
 - Consultez le moniteur série : `pio device monitor`
 
 ### Les utilisateurs ne se déplacent pas

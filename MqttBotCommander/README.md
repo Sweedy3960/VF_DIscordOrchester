@@ -1,11 +1,13 @@
-# ESP32 Switch Controller
+# ESP32-C6 Switch Controller
 
-Firmware ESP32 qui lit l'état de 3 switches physiques et envoie les événements via HTTP au serveur Discord-relay.
+Firmware ESP32-C6 qui lit l'état de 3 switches physiques et envoie les événements via HTTP au serveur Discord-relay.
 
 ## 🎯 Nouveautés - Device ID Unique
 
-- **Identification automatique** : Chaque ESP32 génère un Device ID unique basé sur son adresse MAC
-- **Multi-utilisateurs** : Plusieurs ESP32 peuvent coexister sur le même serveur
+- **Board supporté** : XIAO ESP32-C6 (Seeed Studio)
+- **Framework** : ESP-IDF (Espressif IoT Development Framework)
+- **Identification automatique** : Chaque ESP32-C6 génère un Device ID unique basé sur son adresse MAC
+- **Multi-utilisateurs** : Plusieurs ESP32-C6 peuvent coexister sur le même serveur
 - **Configuration personnalisée** : Chaque appareil a ses propres mappings Discord via l'interface web
 
 ## Description
@@ -19,7 +21,7 @@ Ce firmware permet de contrôler les mouvements Discord via 3 switches physiques
 
 ## Matériel requis
 
-- ESP32 DevKit (ou compatible)
+- XIAO ESP32-C6 (Seeed Studio)
 - 3 boutons poussoirs (normalement ouverts)
 - Fils de connexion
 - (Optionnel) Résistances de pull-up si vous n'utilisez pas les résistances internes
@@ -27,12 +29,12 @@ Ce firmware permet de contrôler les mouvements Discord via 3 switches physiques
 ## Schéma de connexion
 
 ```
-Switch 0: GPIO 25 → Bouton → GND
-Switch 1: GPIO 26 → Bouton → GND  
-Switch 2: GPIO 27 → Bouton → GND
+Switch 0: D0 (GPIO 0) → Bouton → GND
+Switch 1: D1 (GPIO 1) → Bouton → GND  
+Switch 2: D2 (GPIO 2) → Bouton → GND
 ```
 
-Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
+Les switches utilisent les résistances de pull-up internes de l'ESP32-C6, donc :
 - État au repos (non appuyé) = HIGH
 - État appuyé = LOW
 
@@ -52,18 +54,18 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 // Device ID (optionnel - laissez vide pour auto-génération)
 #define CUSTOM_DEVICE_ID ""  // Ex: "MonESP32-Bureau" ou laissez ""
 
-// GPIO Pins (modifier si nécessaire)
-#define SWITCH_0_PIN 25
-#define SWITCH_1_PIN 26
-#define SWITCH_2_PIN 27
+// GPIO Pins (XIAO ESP32-C6 - D0, D1, D2)
+#define SWITCH_0_PIN 0
+#define SWITCH_1_PIN 1
+#define SWITCH_2_PIN 2
 ```
 
 ### Device ID
 
-**Auto-génération (recommandé)** : Laissez `CUSTOM_DEVICE_ID` vide (`""`). Le Device ID sera généré automatiquement à partir de l'adresse MAC de l'ESP32.
-- Format : `ESP32-AABBCCDDEEFF`
-- Exemple : `ESP32-A4CF12FE8D9C`
-- Unique pour chaque ESP32
+**Auto-génération (recommandé)** : Laissez `CUSTOM_DEVICE_ID` vide (`""`). Le Device ID sera généré automatiquement à partir de l'adresse MAC de l'ESP32-C6.
+- Format : `ESP32-C6-AABBCCDDEEFF`
+- Exemple : `ESP32-C6-A4CF12FE8D9C`
+- Unique pour chaque ESP32-C6
 
 **Device ID personnalisé** : Si vous préférez un nom personnalisé, définissez-le :
 ```cpp
@@ -74,7 +76,7 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 
 ### Prérequis
 - [PlatformIO](https://platformio.org/) installé (via VS Code extension ou CLI)
-- Câble USB pour connecter l'ESP32
+- Câble USB pour connecter l'ESP32-C6
 
 ### Étapes
 
@@ -91,7 +93,7 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
    pio run
    ```
 
-4. Téléversez sur l'ESP32 (connecté via USB) :
+4. Téléversez sur l'ESP32-C6 (connecté via USB) :
    ```bash
    pio run --target upload
    ```
@@ -103,7 +105,7 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
 
 6. **Important** : Notez le **Device ID** affiché au démarrage :
    ```
-   Generated device ID: ESP32-A4CF12FE8D9C
+   Generated device ID: ESP32-C6-A4CF12FE8D9C
    
    ===================================
    IMPORTANT: Register this device at:
@@ -116,32 +118,14 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32, donc :
    - Entrez le Device ID et votre nom
    - Configurez vos mappings Discord
 
-## Installation avec Arduino IDE
+## Note sur le framework ESP-IDF
 
-1. Installez l'Arduino IDE et le support ESP32 :
-   - Ouvrez Arduino IDE
-   - Allez dans Fichier → Préférences
-   - Ajoutez cette URL aux "URLs de gestionnaire de cartes additionnelles" :
-     ```
-     https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-     ```
-   - Allez dans Outils → Type de carte → Gestionnaire de cartes
-   - Cherchez "esp32" et installez "esp32 by Espressif Systems"
+Ce firmware utilise le framework **ESP-IDF** (Espressif IoT Development Framework) au lieu d'Arduino. Les principales différences :
 
-2. Installez les bibliothèques requises :
-   - Allez dans Croquis → Inclure une bibliothèque → Gérer les bibliothèques
-   - Installez :
-     - `ArduinoJson` par Benoit Blanchon
-
-3. Ouvrez `src/main.cpp` dans Arduino IDE
-
-4. Modifiez `include/config.h` avec vos paramètres
-
-5. Sélectionnez la carte : Outils → Type de carte → ESP32 Dev Module
-
-6. Sélectionnez le port série : Outils → Port
-
-7. Téléversez : Croquis → Téléverser
+- **FreeRTOS natif** : Gestion des tâches et timing
+- **API ESP-IDF** : GPIO, WiFi, HTTP client natifs
+- **Meilleure performance** : Code optimisé pour ESP32-C6
+- **Support complet C6** : Fonctionnalités spécifiques au ESP32-C6
 
 ## Format des requêtes HTTP
 
@@ -154,7 +138,7 @@ Exemple: `https://stamya.org/vf/switch/event`
 Format du payload JSON :
 ```json
 {
-  "deviceId": "ESP32-A4CF12FE8D9C",
+  "deviceId": "ESP32-C6-A4CF12FE8D9C",
   "switchId": 0,
   "state": 1,
   "timestamp": 12345678
@@ -168,15 +152,15 @@ Format du payload JSON :
 
 ## Dépannage
 
-### L'ESP32 ne se connecte pas au WiFi
+### L'ESP32-C6 ne se connecte pas au WiFi
 - Vérifiez le SSID et le mot de passe dans `config.h`
-- Assurez-vous que le réseau WiFi est en 2.4 GHz (l'ESP32 ne supporte pas le 5 GHz)
+- Assurez-vous que le réseau WiFi est en 2.4 GHz (l'ESP32-C6 supporte aussi le 5 GHz avec WiFi 6)
 - Vérifiez la force du signal WiFi
 
-### L'ESP32 n'envoie pas de requêtes HTTP
+### L'ESP32-C6 n'envoie pas de requêtes HTTP
 - Vérifiez l'adresse HTTP_SERVER dans `config.h`
 - Vérifiez que le serveur Discord-relay est en cours d'exécution
-- Vérifiez que le port 3000 est accessible depuis l'ESP32
+- Vérifiez que le port 3000 est accessible depuis l'ESP32-C6
 - Consultez le moniteur série pour voir les codes de réponse HTTP
 
 ### Les switches ne fonctionnent pas
@@ -207,17 +191,17 @@ Vitesse du moniteur série : **115200 baud**
 Exemple de sortie :
 ```
 =================================
-ESP32 Switch Controller Starting
+ESP32-C6 Switch Controller Starting
 =================================
 
-Generated device ID: ESP32-A4CF12FE8D9C
+Generated device ID: ESP32-C6-A4CF12FE8D9C
 Connecting to WiFi: MonWiFi
 ...
 WiFi connected!
 IP address: 192.168.1.100
 
 HTTP endpoint: https://stamya.org/vf/switch/event
-Device ID: ESP32-A4CF12FE8D9C
+Device ID: ESP32-C6-A4CF12FE8D9C
 
 ===================================
 IMPORTANT: Register this device at:
