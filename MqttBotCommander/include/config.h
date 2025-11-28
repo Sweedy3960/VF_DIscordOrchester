@@ -22,11 +22,13 @@
 #define STR(x) STR_HELPER(x)
 
 // GPIO Pin Configuration for Switches
-// XIAO ESP32-C6 Pin Mapping:
-// D0 = GPIO0, D1 = GPIO1, D2 = GPIO2
-#define SWITCH_0_PIN 0
-#define SWITCH_1_PIN 1
-#define SWITCH_2_PIN 2
+// XIAO ESP32-C6 Pin Mapping (using safe non-strapping pins):
+// D2 = GPIO2, D3 = GPIO21, D9 = GPIO20
+// Note: Avoid GPIO0, GPIO1, GPIO4, GPIO5, GPIO8, GPIO9, GPIO15 for buttons
+// as they may affect boot mode if pressed during startup
+#define SWITCH_0_PIN 2
+#define SWITCH_1_PIN 21
+#define SWITCH_2_PIN 20
 
 // Debounce Configuration (milliseconds)
 #define DEBOUNCE_DELAY 50

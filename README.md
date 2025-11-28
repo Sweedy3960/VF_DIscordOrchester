@@ -152,11 +152,13 @@ Les mappings par appareil se configurent ensuite via l'interface web à `https:/
 ## Schéma de Câblage
 
 ```
-XIAO ESP32-C6     Bouton       GND
-D0 (GPIO 0) ----> Switch 0 --> GND
-D1 (GPIO 1) ----> Switch 1 --> GND
-D2 (GPIO 2) ----> Switch 2 --> GND
+XIAO ESP32-C6      Bouton       GND
+D2 (GPIO 2)  ----> Switch 0 --> GND
+D3 (GPIO 21) ----> Switch 1 --> GND
+D9 (GPIO 20) ----> Switch 2 --> GND
 ```
+
+**Note**: Ces pins sont choisis car ils ne sont pas des pins de strapping (boot).
 
 Les switches utilisent les résistances pull-up internes de l'ESP32-C6.
 

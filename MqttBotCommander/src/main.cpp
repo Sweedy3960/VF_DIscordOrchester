@@ -103,6 +103,10 @@ static void setup_wifi(void) {
         attempts++;
     }
     printf("\n");
+    
+    if (!wifi_connected) {
+        ESP_LOGW(TAG, "WiFi connection failed after %d attempts", attempts);
+    }
 }
 
 static void setup_switches(void) {
@@ -184,12 +188,18 @@ static void send_switch_event(int switchId, int state) {
         return;
     }
     
-    // Create JSON payload
+    // Create JSON payload with bounds checking
+    // Max deviceId is 31 chars (32 with null), giving max JSON of ~100 chars
     char json_payload[256];
     int64_t timestamp = esp_timer_get_time() / 1000;
-    snprintf(json_payload, sizeof(json_payload),
-             "{\"deviceId\":\"%s\",\"switchId\":%d,\"state\":%d,\"timestamp\":%lld}",
+    int written = snprintf(json_payload, sizeof(json_payload),
+             "{\"deviceId\":\"%.31s\",\"switchId\":%d,\"state\":%d,\"timestamp\":%lld}",
              deviceId, switchId, state, timestamp);
+    
+    if (written < 0 || written >= (int)sizeof(json_payload)) {
+        ESP_LOGE(TAG, "JSON payload too large, skipping send");
+        return;
+    }
     
     esp_http_client_config_t config = {
         .url = HTTP_ENDPOINT,

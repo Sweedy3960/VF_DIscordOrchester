@@ -29,10 +29,12 @@ Ce firmware permet de contrôler les mouvements Discord via 3 switches physiques
 ## Schéma de connexion
 
 ```
-Switch 0: D0 (GPIO 0) → Bouton → GND
-Switch 1: D1 (GPIO 1) → Bouton → GND  
-Switch 2: D2 (GPIO 2) → Bouton → GND
+Switch 0: D2 (GPIO 2)  → Bouton → GND
+Switch 1: D3 (GPIO 21) → Bouton → GND  
+Switch 2: D9 (GPIO 20) → Bouton → GND
 ```
+
+**Note**: Ces pins sont choisis car ils ne sont pas des pins de strapping (boot). Les pins GPIO0, GPIO1, GPIO4, GPIO5, GPIO8, GPIO9, GPIO15 doivent être évités pour les boutons car ils peuvent affecter le mode de démarrage si appuyés au boot.
 
 Les switches utilisent les résistances de pull-up internes de l'ESP32-C6, donc :
 - État au repos (non appuyé) = HIGH
@@ -54,10 +56,10 @@ Les switches utilisent les résistances de pull-up internes de l'ESP32-C6, donc 
 // Device ID (optionnel - laissez vide pour auto-génération)
 #define CUSTOM_DEVICE_ID ""  // Ex: "MonESP32-Bureau" ou laissez ""
 
-// GPIO Pins (XIAO ESP32-C6 - D0, D1, D2)
-#define SWITCH_0_PIN 0
-#define SWITCH_1_PIN 1
-#define SWITCH_2_PIN 2
+// GPIO Pins (XIAO ESP32-C6 - D2, D3, D9 - safe non-strapping pins)
+#define SWITCH_0_PIN 2
+#define SWITCH_1_PIN 21
+#define SWITCH_2_PIN 20
 ```
 
 ### Device ID
